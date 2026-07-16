@@ -1,0 +1,230 @@
+/* ===========================
+   PACKAGES PAGE STYLES
+   =========================== */
+
+p::first-letter {
+    text-transform: uppercase;
+}
+
+.info {
+    color: #fff;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.info.alert {
+    color: #da3d41;
+}
+
+.bt {
+    opacity: 0.4;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+table td {
+    color: #fff;
+    border-bottom: 1px solid #e6e6e6;
+    padding: 10px 4px 10px 0;
+}
+
+table td:first-child {
+    font-weight: 700;
+}
+
+.logo {
+    max-width: 200px;
+    display: block;
+    margin: 0 auto 30px;
+    width: auto;
+    height: auto;
+}
+
+/* ===========================
+   PLANS/PACKAGES SECTION
+   =========================== */
+
+.plans-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.plan-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    padding: 15px 20px;
+    font-size: 16px;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.plan-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.plan-button.active {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.arrow {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.plan-button.active .arrow {
+    transform: rotate(180deg);
+}
+
+/* ===========================
+   PACKAGES DROPDOWN
+   =========================== */
+
+.packages {
+    display: none;
+    padding: 0 20px;
+    margin-top: 10px;
+    animation: slideDown 0.3s ease;
+}
+
+.packages.active {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===========================
+   PACKAGE BUTTONS
+   =========================== */
+
+.package-btn {
+    background: #f5f5f5;
+    border: 2px solid #667eea;
+    padding: 12px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.package-btn:hover {
+    background: #667eea;
+    color: #fff;
+    transform: translateX(5px);
+}
+
+/* Standard Package (Green) */
+.package-btn.standard {
+    border-color: #4CAF50;
+    color: #4CAF50;
+}
+
+.package-btn.standard:hover {
+    background: #4CAF50;
+    color: #fff;
+}
+
+/* Premium Package (Orange) */
+.package-btn.premium {
+    border-color: #FF9800;
+    color: #FF9800;
+}
+
+.package-btn.premium:hover {
+    background: #FF9800;
+    color: #fff;
+}
+
+/* VIP Package (Pink) */
+.package-btn.vip {
+    border-color: #E91E63;
+    color: #E91E63;
+}
+
+.package-btn.vip:hover {
+    background: #E91E63;
+    color: #fff;
+}
+
+/* ===========================
+   THEME VARIATIONS
+   =========================== */
+
+.lite {
+    background: #fff;
+}
+
+.lite .info,
+.lite h1,
+.lite table td {
+    color: #444;
+}
+
+.dark {
+    background: #343434;
+}
+
+.dark table td {
+    border-bottom: 1px solid #505050;
+}
+
+/* ===========================
+   RESPONSIVE
+   =========================== */
+
+@media(max-width: 600px) {
+    .logo {
+        max-width: 150px;
+    }
+    
+    .plan-button {
+        padding: 12px 15px;
+        font-size: 15px;
+    }
+    
+    .package-btn {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+}
+
+@media(max-width: 400px) {
+    .logo {
+        max-width: 150px;
+    }
+    
+    .plan-button {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .packages {
+        padding: 0 10px;
+    }
+}
