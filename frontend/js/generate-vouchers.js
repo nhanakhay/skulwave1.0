@@ -5,6 +5,7 @@ const generatedList = document.getElementById('generatedList');
 const generatedOutput = document.getElementById('generatedOutput');
 const generateBtn = document.getElementById('generateBtn');
 const generateLoading = document.getElementById('generateLoading');
+const downloadBtn = document.getElementById('downloadBtn');
 
 const adminApiKey = localStorage.getItem('adminApiKey');
 const adminUsername = localStorage.getItem('adminUsername');
@@ -67,6 +68,8 @@ async function handleGenerateVouchers(event) {
         const voucherUsername = `${usernamePrefix}-${Date.now().toString().slice(-5)}-${i + 1}`;
         const voucherPassword = `${passwordTemplate}-${makeRandomString(6)}`;
 
+        console.log(results);
+
         try {
             const response = await fetch(`${apiBase}/vouchers/generate`, {
                 method: 'POST',
@@ -93,6 +96,7 @@ async function handleGenerateVouchers(event) {
     }
 
     generatedOutput.textContent = results.join('\n');
+    console.log(results);
     generatedList.style.display = 'block';
     generateBtn.disabled = false;
     generateLoading.style.display = 'none';
