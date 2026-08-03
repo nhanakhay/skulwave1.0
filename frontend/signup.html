@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkulWave Sign Up</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 SkulWave Internet</h1>
+            <p>Create your account to get started</p>
+        </div>
+
+        <div class="signup-form">
+            <h2>Join SkulWave</h2>
+
+            <div class="form-group">
+                <label>
+                    <img class="ico" src="img/user.svg" alt="User icon" />
+                    <input type="text" id="username" placeholder="Choose a username" required />
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <img class="ico" src="img/password.svg" alt="Password icon" />
+                    <input type="password" id="password" placeholder="Create a password" required />
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <img class="ico" src="img/password.svg" alt="Confirm password icon" />
+                    <input type="password" id="confirmPassword" placeholder="Confirm password" required />
+                </label>
+            </div>
+
+            <button class="signup-btn" onclick="signup()">Create Account</button>
+
+            <div id="msg" class="message" style="display: none;"></div>
+
+            <div class="login-link">
+                Already have an account? <a href="./login.html">Sign in here</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function signup() {
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const confirmPassword = document.getElementById("confirmPassword").value.trim();
+            const msgDiv = document.getElementById("msg");
+
+            // Clear previous messages
+            msgDiv.style.display = "none";
+            msgDiv.className = "message";
+
+            // Basic validation
+            if (!username || !password || !confirmPassword) {
+                showMessage("Please fill in all fields", "error");
+                return;
+            }
+
+            if (username.length < 3) {
+                showMessage("Username must be at least 3 characters", "error");
+                return;
+            }
+
+            if (password.length < 6) {
+                showMessage("Password must be at least 6 characters", "error");
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showMessage("Passwords do not match", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch("http://localhost:3000/api/auth/register", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.message) {
+                    // Success
+                    localStorage.setItem("username", username);
+                    localStorage.setItem("password", password);
+                    showMessage("Account created successfully! Redirecting...", "success");
+
+                    // Redirect to payment page after short delay
+                    setTimeout(() => {
+                        window.location.href = "packages.html";
+                    }, 1500);
+                } else {
+                    showMessage(data.error || "Registration failed", "error");
+                }
+            } catch (error) {
+                showMessage("Network error. Please try again.", "error");
+                console.error("Signup error:", error);
+            }
+        }
+
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById("msg");
+            msgDiv.textContent = text;
+            msgDiv.className = `message ${type}`;
+            msgDiv.style.display = "block";
+        }
+
+        // Allow Enter key to submit
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("username").focus();
+
+            document.addEventListener("keypress", function (e) {
+                if (e.key === "Enter") {
+                    signup();
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,19 +1,22 @@
 
-const apiBase = `http://${window.location.hostname}:3000/api/vouchers`
+const apiBase = `${window.location.protocol}//${window.location.hostname}:3000/api/vouchers/redeem`;
+
+
+
+
 
 async function handleLogin(event) {
     event.preventDefault();
 
-    const username = document.login.username.value.trim();
-    const password = document.login.password.value.trim();
-    const loginBtn = document.getElementById("loginBtn");
-    const loginLoading = document.getElementById("loginLoading");
+    const usernameInput = document.getElementById('vUsername');
+    const loginBtn = document.getElementById("vLoginBtn");
+    const loginLoading = document.getElementById("vLoginLoading");
 
-    console.log(username);
-    console.log(password);
+    const username = usernameInput?.value?.trim() || "";
+    const password = 'skulwave';
 
-    if (!username || !password) {
-        alert("Please enter both username and password.");
+    if (!username) {
+        alert("Please enter your Voucher.");
         return false;
     }
 
@@ -22,7 +25,7 @@ async function handleLogin(event) {
     loginLoading.style.display = "block";
 
     try {
-        const response = await fetch(`${apiBase}/redeem`, {
+        const response = await fetch(apiBase, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -30,12 +33,12 @@ async function handleLogin(event) {
             body: JSON.stringify({ hotspot_username: username, hotspot_password: password }),
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
             loginBtn.disabled = false;
             loginLoading.style.display = "none";
-            alert(data.error || "Server Error, contact Administrator in the IT Lab(Sir Theo).");
+            alert(data.error || "Server Error, contact Administrator in the IT Lab(Sir Theophilus).");
             return false;
         }
 
@@ -46,7 +49,7 @@ async function handleLogin(event) {
         console.error(err);
         loginBtn.disabled = false;
         loginLoading.style.display = "none";
-        alert("Unable to reach login service. Please try again later.");
+        alert("Server Error, contact Administrator in the IT");
         return false;
     }
 }

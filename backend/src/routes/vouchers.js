@@ -4,6 +4,29 @@ const db = require('../db/database');
 const { addHotspotUser } = require('../mikrotik/mikrotik');
 const router = express.Router();
 
+const DEFAULT_VOUCHER_PASSWORD = 'skulwave';
+
+function generateHotspotUsername(profileName = '', length = 10) {
+  const prefix = profileName
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toLowerCase())
+    .join('');
+
+  const safePrefix = prefix || 'vu';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i += 1) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${safePrefix}-${result}`;
+}
+
+function resolveSharedPassword() {
+  return process.env.VOUCHER_SHARED_PASSWORD || DEFAULT_VOUCHER_PASSWORD;
+}
+
 // ─────────────────────────────────────────────
 // Map package_id to MikroTik hotspot profile name
 // Must match exactly what's configured on the RB5009
@@ -42,14 +65,12 @@ router.post('/generate', async (req, res) => {
 
     const {
       package_id,
-      hotspot_username,
-      hotspot_password,
       created_by = 'admin',
     } = req.body;
 
-    if (!package_id || !hotspot_username || !hotspot_password) {
+    if (!package_id) {
       return res.status(400).json({
-        error: 'package_id, hotspot_username, and hotspot_password are required',
+        error: 'package_id is required',
       });
     }
 
@@ -63,13 +84,15 @@ router.post('/generate', async (req, res) => {
       return res.status(400).json({ error: 'No MikroTik profile mapped for this package' });
     }
 
+    const sharedPassword = resolveSharedPassword();
+    const hotspot_username = generateHotspotUsername(profile);
     const existing = await getVoucherStmt.get(hotspot_username);
     if (existing) {
-      return res.status(400).json({ error: 'hotspot_username already exists' });
+      return res.status(400).json({ error: 'Generated hotspot username already exists. Please try again.' });
     }
 
     // Hash password — cost factor 8 for Pi 3B+ performance
-    const hashedPassword = await bcrypt.hash(hotspot_password, 8);
+    const hashedPassword = await bcrypt.hash(sharedPassword, 8);
 
     // Save voucher to SQLite
     // valid_until is NULL — will be set at first redeem
@@ -93,6 +116,7 @@ router.post('/generate', async (req, res) => {
         valid_until: null,
         status: 'unused',
         created_by,
+        shared_password: sharedPassword,
       },
     });
   } catch (err) {
@@ -112,11 +136,12 @@ router.post('/generate', async (req, res) => {
 // ─────────────────────────────────────────────
 async function redeemVoucher(req, res) {
   try {
-    const { hotspot_username, hotspot_password } = req.body;
+    const { hotspot_username } = req.body;
+    const sharedPassword = resolveSharedPassword();
 
-    if (!hotspot_username || !hotspot_password) {
+    if (!hotspot_username) {
       return res.status(400).json({
-        error: 'hotspot_username and hotspot_password are required',
+        error: 'hotspot_username is required',
       });
     }
 
@@ -141,7 +166,7 @@ async function redeemVoucher(req, res) {
     }
 
     // Validate password against stored hash
-    const match = await bcrypt.compare(hotspot_password, voucher.hotspot_password);
+    const match = await bcrypt.compare(sharedPassword, voucher.hotspot_password);
     if (!match) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
@@ -171,11 +196,11 @@ async function redeemVoucher(req, res) {
       // Voucher stays 'unused' and can be retried
       // ─────────────────────────────────────────
       try {
-        await addHotspotUser(hotspot_username, hotspot_password, profile);
+        await addHotspotUser(hotspot_username, sharedPassword, profile);
       } catch (mikrotikErr) {
-        console.error('[voucher/redeem] MikroTik error:', mikrotikErr.message);
+        console.error('[voucher/redeem] MikroTik error:', mikrotikErr && mikrotikErr.message ? mikrotikErr.message : mikrotikErr);
         return res.status(500).json({
-          error: 'Failed to activate on router. Please try again.',
+          error: 'Failed to activate on router. Please verify the MikroTik connection and try again.',
         });
       }
 

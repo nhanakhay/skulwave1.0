@@ -4,10 +4,10 @@ const apiBase = `http://${window.location.hostname}:3000/api/vouchers`
 async function handleLogin(event) {
     event.preventDefault();
 
-    const username = document.getElementById('vUsername')
-    const password = document.getElementById('vPassword')
-    const loginBtn = document.getElementById("vLoginBtn");
-    const loginLoading = document.getElementById("vLoginLoading");
+    const username = document.login.username.value.trim();
+    const password = document.login.password.value.trim();
+    const loginBtn = document.getElementById("loginBtn");
+    const loginLoading = document.getElementById("loginLoading");
 
     console.log(username);
     console.log(password);
@@ -46,7 +46,7 @@ async function handleLogin(event) {
         console.error(err);
         loginBtn.disabled = false;
         loginLoading.style.display = "none";
-        alert("Server Error, contact Administrator in the IT Lab(Sir Theo).");
+        alert("Unable to reach login service. Please try again later.");
         return false;
     }
 }

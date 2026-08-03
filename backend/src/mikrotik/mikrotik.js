@@ -1,5 +1,25 @@
 const RouterOSAPI = require('node-routeros').RouterOSAPI;
 
+function normalizeRouterReply(reply) {
+  if (reply === null || reply === undefined) {
+    return [];
+  }
+
+  if (typeof reply === 'string') {
+    return reply.trim() === '' ? [] : reply;
+  }
+
+  if (Array.isArray(reply)) {
+    return reply;
+  }
+
+  if (typeof reply === 'object') {
+    return reply;
+  }
+
+  return [reply];
+}
+
 // ─────────────────────────────────────────────
 // MikroTik Connection Pool
 // Reuses connections instead of opening a new
@@ -31,6 +51,10 @@ class MikroTikConnectionPool {
         timeout: 10000,
       });
 
+      conn.on('connect', () => {
+        console.log(`[mikrotik] Connected to RouterOS at ${process.env.MIKROTIK_HOST}`);
+      });
+
       // Prevent unhandled 'error' events from crashing the process
       conn.on('error', (err) => {
         console.error('[mikrotik] RouterOS connection error:', err && err.message ? err.message : err);
@@ -41,7 +65,12 @@ class MikroTikConnectionPool {
         await conn.connect();
       } catch (err) {
         this.activeCount = Math.max(0, this.activeCount - 1);
-        console.error('[mikrotik] Failed to connect to RouterOS:', err && err.message ? err.message : err);
+        console.error('[mikrotik] Failed to connect to RouterOS:', {
+          host: process.env.MIKROTIK_HOST,
+          port: 8728,
+          message: err && err.message ? err.message : err,
+          errno: err && err.errno ? err.errno : undefined,
+        });
         throw err;
       }
       return conn;
@@ -92,9 +121,15 @@ async function addHotspotUser(username, password, profile = 'default') {
       `=password=${password}`,
       `=profile=${profile}`,
     ];
-    const result = await conn.write('/ip/hotspot/user/add', params);
+    const result = await conn.write('/ip/hotspot/user/add', params).catch((err) => {
+      if (err && err.message && err.message.includes('UNKNOWNREPLY')) {
+        return [];
+      }
+      throw err;
+    });
+    const normalizedResult = normalizeRouterReply(result);
     console.log(`[mikrotik] Added hotspot user: ${username} on profile: ${profile}`);
-    return { message: 'User created successfully', data: result };
+    return { message: 'User created successfully', data: normalizedResult };
   } catch (err) {
     throw new Error(`[mikrotik/addHotspotUser] ${err?.message || String(err)}`);
   } finally {
@@ -111,14 +146,20 @@ async function removeHotspotUser(username) {
   try {
     const users = await conn.write('/ip/hotspot/user/print', [
       `?name=${username}`,
-    ]);
+    ]).catch((err) => {
+      if (err && err.message && err.message.includes('UNKNOWNREPLY')) {
+        return [];
+      }
+      throw err;
+    });
+    const normalizedUsers = normalizeRouterReply(users);
 
-    if (!Array.isArray(users) || users.length === 0) {
+    if (!Array.isArray(normalizedUsers) || normalizedUsers.length === 0) {
       console.warn(`[mikrotik] User not found on router: ${username}`);
       return { message: 'Hotspot user not found', removed: false };
     }
 
-    const user = users[0];
+    const user = normalizedUsers[0];
     await conn.write('/ip/hotspot/user/remove', [`=.id=${user['.id']}`]);
     console.log(`[mikrotik] Removed hotspot user: ${username}`);
     return { message: 'User removed successfully', removed: true };
@@ -139,14 +180,20 @@ async function disconnectHotspotUser(username) {
   try {
     const activeSessions = await conn.write('/ip/hotspot/active/print', [
       `?user=${username}`,
-    ]);
+    ]).catch((err) => {
+      if (err && err.message && err.message.includes('UNKNOWNREPLY')) {
+        return [];
+      }
+      throw err;
+    });
+    const normalizedSessions = normalizeRouterReply(activeSessions);
 
-    if (!Array.isArray(activeSessions) || activeSessions.length === 0) {
+    if (!Array.isArray(normalizedSessions) || normalizedSessions.length === 0) {
       console.log(`[mikrotik] No active session for: ${username}`);
       return { message: 'No active session found', disconnected: false };
     }
 
-    for (const session of activeSessions) {
+    for (const session of normalizedSessions) {
       await conn.write('/ip/hotspot/active/remove', [`=.id=${session['.id']}`]);
     }
 

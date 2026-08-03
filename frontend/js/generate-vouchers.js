@@ -5,6 +5,7 @@ const generatedList = document.getElementById('generatedList');
 const generatedOutput = document.getElementById('generatedOutput');
 const generateBtn = document.getElementById('generateBtn');
 const generateLoading = document.getElementById('generateLoading');
+const downloadBtn = document.getElementById('downloadBtn');
 
 const adminApiKey = localStorage.getItem('adminApiKey');
 const adminUsername = localStorage.getItem('adminUsername');
@@ -50,8 +51,6 @@ async function handleGenerateVouchers(event) {
 
     const packageId = document.voucherGenerator.package_id.value;
     const count = Number(document.voucherGenerator.count.value) || 1;
-    const usernamePrefix = document.voucherGenerator.usernamePrefix.value.trim() || 'voucher';
-    const passwordTemplate = document.voucherGenerator.passwordTemplate.value.trim() || 'pass';
 
     if (count < 1) {
         alert('Please enter a valid voucher count.');
@@ -64,9 +63,6 @@ async function handleGenerateVouchers(event) {
     const results = [];
 
     for (let i = 0; i < count; i++) {
-        const voucherUsername = `${usernamePrefix}-${Date.now().toString().slice(-5)}-${i + 1}`;
-        const voucherPassword = `${passwordTemplate}-${makeRandomString(6)}`;
-
         try {
             const response = await fetch(`${apiBase}/vouchers/generate`, {
                 method: 'POST',
@@ -76,8 +72,6 @@ async function handleGenerateVouchers(event) {
                 },
                 body: JSON.stringify({
                     package_id: packageId,
-                    hotspot_username: voucherUsername,
-                    hotspot_password: voucherPassword,
                     created_by: adminUsername,
                 }),
             });
@@ -85,14 +79,16 @@ async function handleGenerateVouchers(event) {
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to create voucher');
             }
-            results.push(`${voucherUsername}:${voucherPassword} (${data.voucher.package_name})`);
+            const voucherUsername = data.voucher?.hotspot_username || 'unknown';
+            results.push(`${voucherUsername}:skulwave (${data.voucher.package_name})`);
         } catch (err) {
             console.error(err);
-            results.push(`ERROR: ${err.message} for ${voucherUsername}`);
+            results.push(`ERROR: ${err.message}`);
         }
     }
 
     generatedOutput.textContent = results.join('\n');
+    console.log(results);
     generatedList.style.display = 'block';
     generateBtn.disabled = false;
     generateLoading.style.display = 'none';

@@ -25,12 +25,7 @@
                     <label>
                         <input name="count" type="number" min="1" value="1" placeholder="Number of vouchers" />
                     </label>
-                    <label>
-                        <input name="usernamePrefix" type="text" placeholder="Voucher username prefix" />
-                    </label>
-                    <label>
-                        <input name="passwordTemplate" type="text" placeholder="Voucher password template" />
-                    </label>
+                    <p style="font-size:13px; color:#666; margin:-4px 0 12px;">Each voucher will get a profile-based username like <strong>rd-ABC123XYZ9</strong> and use the fixed password <strong>skulwave</strong>.</p>
                     <button type="submit" id="generateBtn" class="submit-btn">Generate Vouchers</button>
                     <div id="generateLoading" class="loading-spinner">
                         <div class="spinner"></div>
@@ -39,9 +34,12 @@
                 </form>
                 <div id="generatedList" style="margin-top:24px; display:none;">
                     <h2 style="font-size:18px; color:#333; margin-bottom:12px;">Generated Vouchers</h2>
+                    
                     <div id="generatedOutput" style="white-space:pre-wrap; word-break:break-word; background:#f3f3f3; border-radius:10px; padding:16px; color:#333;"></div>
                 </div>
                 <button id="logoutAdmin" onclick="logoutAdmin()" style="margin-top:16px; width:100%; background:#ff5f5f;">Logout</button>
+                <button id="downloadBtn" onclick="downloadVoucher()" style="margin-top:16px; 
+                    width:100%; background:#ff5f5f;"> Download Vouchers</button>
             </div>
         </div>
     </div>
