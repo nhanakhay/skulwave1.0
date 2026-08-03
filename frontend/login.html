@@ -1,63 +1,129 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="pragma" content="no-cache" />
-    <meta http-equiv="expires" content="-1" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SkulWave Log in</title>
-    <link rel="stylesheet" href="css/common.css">
-    <link rel="stylesheet" href="css/login.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meridian — Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <!-- <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"> -->
+  
+  <link rel="stylesheet" href="css/login.css">
 </head>
 
 <body>
 
+  <div class="stage" id="stage">
 
-    <form name="sendin" action="$(link-login-only)" method="post" style="display:none">
-        <input type="hidden" name="username" />
-        <input type="hidden" name="password" />
-        <input type="hidden" name="dst" value="$(link-orig)" />
-        <input type="hidden" name="popup" value="true" />
+    <!-- SIGN IN -->
+    <div class="form-panel" id="signin">
+      <div class="inner">
+        <div class="eyebrow">Meridian · Member Access</div>
+        <h1>SkulWave Wifi</h1>
+        <p class="lede">Sign in to pick up where you left off.</p>
+
+        <form onsubmit="return false;">
+          <div class="field">
+            <label for="si-email">Email</label>
+            <input id="si-email" type="email" autocomplete="email" placeholder="sample@gmail.com" required>
+          </div>
+          <div class="field">
+            <label for="si-pass">Password</label>
+            <input id="si-pass" type="password" autocomplete="current-password" placeholder="••••••••" required>
+          </div>
+          <div class="row-between">
+            <span>&nbsp;</span>
+            <a href="#">Forgot password?</a>
+          </div>
+          <button class="submit" type="submit">Sign in</button>
+        </form>
+
+        <div class="switch-mobile">
+          New here?
+          <button type="button" onclick="setMode(true)">Create an account</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VOUCHER -->
+    <form class="form-panel" id="voucher" onsubmit="return handleLogin(event)"
+            name="sendin" action="$(link-login-only)" method="post">
+      <div class="inner">
+        <div class="eyebrow">SkulWave · Voucher</div>
+        <h1>Enter your voucher code</h1>
+        <p class="lede">Please enter your name and the 12 secret voucher to connect</p>
+
+        <form onsubmit="return false;">
+          <div class="field">
+            <label for="su-username"> Name</label>
+            <input id="vFullname" type="text" autocomplete="name" placeholder="Nana Ama" required>
+          </div>
+          <div class="field">
+            <label for="su-voucher">Voucher</label>
+            <input id="vUsername" type="text" autocomplete="voucher" placeholder="01-35343-1" required>
+          </div>
+          
+          <button class="submit" id="vLoginBtn" type="submit">Connect</button>
+
+          <div id="vLoginLoading" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Connecting...</p>
+          </div>
+        </form>
+
+        <div class="switch-mobile">
+          Already a member?
+          <button type="button" onclick="setMode(false)">Sign in</button>
+        </div>
+      </div>
     </form>
 
-    <div class="ie-fixMinHeight">
-        <div class="main">
-            <div class="wrap animated fadeIn">
-                <form name="login" onsubmit="return handleLogin(event)">
-                    <input type="hidden" name="dst" value="$(link-orig)" />
-                    <input type="hidden" name="popup" value="true" />
+    <!-- SLIDING OVERLAY -->
+    <div class="overlay-container">
+      <div class="overlay">
 
-
-                    <img src="img/skulwaveLogo.png" alt="SkulWave Logo" class="logo" />
-                    <label>
-                        <img class="ico" src="img/user.svg" alt="#" />
-                        <input name="username" type="text" placeholder="Username" />
-                    </label>
-
-                    <label>
-                        <img class="ico" src="img/password.svg" alt="#" />
-                        <input name="password" type="password" placeholder="Password" />
-                        <span class="password-toggle" onclick="togglePassword()" title="Show password">👁</span>
-                    </label>
-
-                    <button type="submit" id="loginBtn" class="submit-btn">Login</button>
-                    
-                    <div id="loginLoading" class="loading-spinner" style="display: none;">
-                        <div class="spinner"></div>
-                        <p>Connecting...</p>
-                    </div>
-                </form>
-
-
-            </div>
+        <div class="overlay-panel overlay-left">
+          <div>
+            
+            <!-- <div class="seal"></div> -->
+            <div class="eyebrow">Already registered?</div>
+            <h2>Pay online with <br>Mobile Money</h2>
+            <p>Sign in with your account to pay with Mobile Money instead of Voucher</p>
+            <button class="ghost-btn" onclick="setMode(false)">Sign in</button>
+          
+            <div class="stamp">POWERED BY SKULWAVE</div>
+          </div>
         </div>
+
+        <div class="overlay-panel overlay-right">
+          <div>
+            
+            <div>
+              <img src="img/skulwave.png" alt="SkulWave Logo" class="logo seal" />
+            </div>
+            <div class="eyebrow">First time here</div>
+            <h2>Start something<br>new today.</h2>
+            <p>Set up an account in moments and get full access to your dashboard.</p>
+            <button class="ghost-btn" onclick="setMode(true)">Voucher Code</button>
+            <div class="stamp">POWERED BY SKULWAVE</div>
+          </div>
+        </div>
+
+      </div>
     </div>
-    <footer>
-        <p class="info bt">Powered by SkulWave Technologies</p>
-    </footer>
+
+  </div>
+
+  <script>
+   function setMode(voucher) {
+      const stage = document.getElementById('stage');
+      stage.classList.toggle('mode-voucher', voucher);
+
+    }
+  </script>
+
+  <script src="js/login.js"></script>
+
 </body>
-<script src="/md5.js"></script>
-<script src="js/login.js"></script>
 
 </html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Plans - Skulwave</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="img/skulwaveLogo.png" alt="skulwave logo" class="logo">
+            <!-- <h1> Skulwave Internet</h1> -->
+            <p>Choose your payment plan and package</p>
+        </div>
+
+        <div class="plans-wrapper">
+            <!-- Daily Plan -->
+            <button class="plan-button" onclick="togglePlan(this)">
+                <span>📅 Daily</span>
+                <span class="arrow">▼</span>
+            </button>
+            <div class="packages">
+                <button class="package-btn standard" onclick="selectPackage('Daily', 'Standard')">
+                    Standard
+                </button>
+                <button class="package-btn premium" onclick="selectPackage('Daily', 'Premium')">
+                    Premium
+                </button>
+                <button class="package-btn vip" onclick="selectPackage('Daily', 'VIP')">
+                    VIP
+                </button>
+            </div>
+
+            <!-- Weekly Plan -->
+            <button class="plan-button" onclick="togglePlan(this)">
+                <span>📆 Weekly</span>
+                <span class="arrow">▼</span>
+            </button>
+            <div class="packages">
+                <button class="package-btn standard" onclick="selectPackage('Weekly', 'Standard')">
+                    Standard
+                </button>
+                <button class="package-btn premium" onclick="selectPackage('Weekly', 'Premium')">
+                    Premium
+                </button>
+                <button class="package-btn vip" onclick="selectPackage('Weekly', 'VIP')">
+                    VIP
+                </button>
+            </div>
+
+            <!-- Monthly Plan -->
+            <button class="plan-button" onclick="togglePlan(this)">
+                <span>📅 Monthly</span>
+                <span class="arrow">▼</span>
+            </button>
+            <div class="packages">
+                <button class="package-btn standard" onclick="selectPackage('Monthly', 'Standard')">
+                    Standard
+                </button>
+                <button class="package-btn premium" onclick="selectPackage('Monthly', 'Premium')">
+                    Premium
+                </button>
+                <button class="package-btn vip" onclick="selectPackage('Monthly', 'VIP')">
+                    VIP
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function togglePlan(button) {
+            // Close other open plans
+            const allButtons = document.querySelectorAll('.plan-button');
+            const allPackages = document.querySelectorAll('.packages');
+
+            allButtons.forEach(btn => {
+                if (btn !== button) {
+                    btn.classList.remove('active');
+                }
+            });
+
+            allPackages.forEach(pkg => {
+                if (pkg.previousElementSibling !== button) {
+                    pkg.classList.remove('active');
+                }
+            });
+
+            // Toggle current plan
+            button.classList.toggle('active');
+            button.nextElementSibling.classList.toggle('active');
+        }
+
+        function selectPackage(plan, package_type) {
+            // Log selection (you can send this to backend)
+            console.log(`Selected: ${plan} - ${package_type}`);
+            
+            // Example: You can send this to your backend
+            // sendPaymentData(plan, package_type);
+            
+            alert(`You selected: ${plan} - ${package_type}`);
+        }
+
+        // Example function to send payment data to backend
+        // function sendPaymentData(plan, package_type) {
+        //     fetch('/api/payment', {
+        //         method: 'POST',
+        //         headers: {
+        //             'Content-Type': 'application/json',
+        //         },
+        //         body: JSON.stringify({
+        //             plan: plan,
+        //             package: package_type
+        //         })
+        //     })
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         console.log('Success:', data);
+        //         // Redirect to payment gateway or success page
+        //     })
+        //     .catch(error => console.error('Error:', error));
+        // }
+    </script>
+</body>
+</html>

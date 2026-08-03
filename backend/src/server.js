@@ -35,7 +35,8 @@ app.use("/api/vouchers", voucherRoutes);
 // Many hotspot portals post credentials to `/login`.
 // Reuse the voucher redeem handler so entering voucher codes activates the voucher.
 if (voucherRoutes && voucherRoutes.redeemVoucher) {
-  app.post('/login', (req, res) => voucherRoutes.redeemVoucher(req, res));
+  app.post('/', (req, res) => 
+    voucherRoutes.redeemVoucher(req, res));
 }
 
 // Debug note: app._router may be undefined early in startup.
