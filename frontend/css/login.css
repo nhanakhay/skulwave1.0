@@ -226,10 +226,10 @@
   .seal::before{
     /* content:"◆"; */
     color:var(--brass-1);
-    transform:rotate(-30deg);
+    /* transform:rotate(-30deg); */
     /* font-size:14px; */
   }
-  @keyframes spin{ to{ transform:rotate(40deg); } }
+  /* @keyframes spin{ to{ transform:rotate(40deg); } } */
 
 
   .overlay-panel .eyebrow{ color:var(--brass-1); }

@@ -11,7 +11,7 @@ const adminApiKey = localStorage.getItem('adminApiKey');
 const adminUsername = localStorage.getItem('adminUsername');
 
 if (!adminApiKey || !adminUsername) {
-    window.location.href = 'adminlogin.html';
+    window.location.href = '../admin/adminlogin.html';
 }
 
 adminUsernameLabel.textContent = adminUsername;
@@ -98,7 +98,7 @@ async function handleGenerateVouchers(event) {
 function logoutAdmin() {
     localStorage.removeItem('adminApiKey');
     localStorage.removeItem('adminUsername');
-    window.location.href = 'adminlogin.html';
+    window.location.href = '../admin/adminlogin.html';
 }
 
 loadPackages();

@@ -13,7 +13,6 @@ async function handleLogin(event) {
     const loginLoading = document.getElementById("vLoginLoading");
 
     const username = usernameInput?.value?.trim() || "";
-    const password = 'skulwave';
 
     if (!username) {
         alert("Please enter your Voucher.");
@@ -30,7 +29,7 @@ async function handleLogin(event) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ hotspot_username: username, hotspot_password: password }),
+            body: JSON.stringify({ hotspot_username: username }),
         });
 
         const data = await response.json().catch(() => ({}));
@@ -42,8 +41,21 @@ async function handleLogin(event) {
             return false;
         }
 
-        // On successful redeem, go to status page which shows connectivity.
-        window.location.href = "status.html";
+        const voucher = data?.voucher || {};
+        const routerLoginForm = document.getElementById('routerLoginForm');
+
+        if (!routerLoginForm || routerLoginForm.getAttribute('action').includes('$(link-login-only)')) {
+            throw new Error('RouterOS login URL was not provided. Serve login.html from the Hotspot files.');
+        }
+
+        routerLoginForm.elements.username.value = voucher.username || username;
+        routerLoginForm.elements.password.value = voucher.password || '';
+        routerLoginForm.elements.dst.value = `${window.location.protocol}//${window.location.host}/status.html`;
+
+        // This navigation is essential. A fetch request can look successful even
+        // when RouterOS rejects the credentials, and it does not prove a Hotspot
+        // session was created.
+        routerLoginForm.submit();
         return false;
     } catch (err) {
         console.error(err);
@@ -54,24 +66,5 @@ async function handleLogin(event) {
     }
 }
 
-function doLogin() {
-    document.sendin.username.value = document.login.username.value;
-    document.sendin.password.value = hexMD5('$(chap-id)' + document.login.password.value + '$(chap-challenge)');
-    document.sendin.submit();
-    return false;
-}
 
-function togglePassword() {
-    const passwordInput = document.login.password;
-    const toggle = document.querySelector('.password-toggle');
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggle.textContent = '🙈';
-        toggle.title = 'Hide password';
-    } else {
-        passwordInput.type = 'password';
-        toggle.textContent = '👁';
-        toggle.title = 'Show password';
-    }
-}
 

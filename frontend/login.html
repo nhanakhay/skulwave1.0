@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meridian — Sign in</title>
+  <title>Local SkulWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <!-- <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"> -->
   
@@ -27,10 +27,7 @@
             <label for="si-email">Email</label>
             <input id="si-email" type="email" autocomplete="email" placeholder="sample@gmail.com" required>
           </div>
-          <div class="field">
-            <label for="si-pass">Password</label>
-            <input id="si-pass" type="password" autocomplete="current-password" placeholder="••••••••" required>
-          </div>
+          
           <div class="row-between">
             <span>&nbsp;</span>
             <a href="#">Forgot password?</a>
@@ -46,14 +43,13 @@
     </div>
 
     <!-- VOUCHER -->
-    <form class="form-panel" id="voucher" onsubmit="return handleLogin(event)"
-            name="sendin" action="$(link-login-only)" method="post">
+    <div class="form-panel" id="voucher">
       <div class="inner">
         <div class="eyebrow">SkulWave · Voucher</div>
         <h1>Enter your voucher code</h1>
         <p class="lede">Please enter your name and the 12 secret voucher to connect</p>
 
-        <form onsubmit="return false;">
+        <form id="voucherForm" onsubmit="return handleLogin(event)">
           <div class="field">
             <label for="su-username"> Name</label>
             <input id="vFullname" type="text" autocomplete="name" placeholder="Nana Ama" required>
@@ -76,6 +72,16 @@
           <button type="button" onclick="setMode(false)">Sign in</button>
         </div>
       </div>
+    </div>
+
+    <!-- RouterOS replaces $(link-login-only) when this file is served as the
+         hotspot login page. This form must be submitted as a navigation, not
+         with fetch(), so RouterOS can complete the PAP login and redirect. -->
+    <form id="routerLoginForm" name="sendin" action="$(link-login-only)" method="post" style="display:none">
+      <input type="hidden" name="username">
+      <input type="hidden" name="password">
+      <input type="hidden" name="dst" value="status.html">
+      <input type="hidden" name="popup" value="true">
     </form>
 
     <!-- SLIDING OVERLAY -->

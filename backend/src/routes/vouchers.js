@@ -245,6 +245,7 @@ async function redeemVoucher(req, res) {
       voucher: {
         id: voucher.id,
         username: hotspot_username,
+        password: sharedPassword,
         package: pkg,
         valid_until: validUntil.toISOString(),
         status: 'active',
