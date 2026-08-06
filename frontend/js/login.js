@@ -1,6 +1,9 @@
 
 const apiBase = `${window.location.protocol}//${window.location.hostname}:3000/api/vouchers/redeem`;
 
+const query = new URLSearchParams(window.location.search);
+const routerLoginUrl = query.get('router-login');
+const originalDestination = query.get('dst');
 
 
 
@@ -44,13 +47,14 @@ async function handleLogin(event) {
         const voucher = data?.voucher || {};
         const routerLoginForm = document.getElementById('routerLoginForm');
 
-        if (!routerLoginForm || routerLoginForm.getAttribute('action').includes('$(link-login-only)')) {
-            throw new Error('RouterOS login URL was not provided. Serve login.html from the Hotspot files.');
+        if (!routerLoginForm || !routerLoginUrl) {
+            throw new Error('Router login URL is missing. Update the router redirect login.html.');
         }
 
+        routerLoginForm.action = routerLoginUrl;
         routerLoginForm.elements.username.value = voucher.username || username;
         routerLoginForm.elements.password.value = voucher.password || '';
-        routerLoginForm.elements.dst.value = `${window.location.protocol}//${window.location.host}/status.html`;
+        routerLoginForm.elements.dst.value = originalDestination || `${window.location.protocol}//${window.location.host}/status.html`;
 
         // This navigation is essential. A fetch request can look successful even
         // when RouterOS rejects the credentials, and it does not prove a Hotspot

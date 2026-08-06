@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="cache-control" content="no-cache">
+  <meta http-equiv="pragma" content="no-cache">
+  <title>Redirecting to SkulWave</title>
+</head>
+<body>
+  <!--
+    Upload this ONE file to the RouterOS Hotspot HTML directory as login.html.
+    Replace SERVER_IP with the LAN address of the computer/Raspberry Pi running
+    this application. RouterOS expands the two $(...) values before redirecting.
+  -->
+  <form id="redirectForm" action="http://SERVER_IP:3000/login.html" method="get">
+    <input type="hidden" name="router-login" value="$(link-login-only)">
+    <input type="hidden" name="dst" value="$(link-orig)">
+  </form>
+  <script>
+    document.getElementById('redirectForm').submit();
+  </script>
+</body>
+</html>

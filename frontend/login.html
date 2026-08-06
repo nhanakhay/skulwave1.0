@@ -74,10 +74,9 @@
       </div>
     </div>
 
-    <!-- RouterOS replaces $(link-login-only) when this file is served as the
-         hotspot login page. This form must be submitted as a navigation, not
-         with fetch(), so RouterOS can complete the PAP login and redirect. -->
-    <form id="routerLoginForm" name="sendin" action="$(link-login-only)" method="post" style="display:none">
+    <!-- This page is served by the application server. The small redirect-only
+         RouterOS login.html supplies the real login URL in the query string. -->
+    <form id="routerLoginForm" name="sendin" method="post" style="display:none">
       <input type="hidden" name="username">
       <input type="hidden" name="password">
       <input type="hidden" name="dst" value="status.html">
