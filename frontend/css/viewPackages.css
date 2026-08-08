@@ -30,7 +30,8 @@ body {
 .page-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .back-button,
@@ -46,7 +47,11 @@ body {
 }
 
 .back-button:hover { background: var(--paper-dim); }
-.voucher-button { background: var(--clay); color: #fff8ec; }
+.voucher-button { 
+  background: var(--clay); 
+  color: #fff8ec; 
+  
+}
 .voucher-button:hover { background: #71392f; }
 .back-button:focus-visible,
 .voucher-button:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
