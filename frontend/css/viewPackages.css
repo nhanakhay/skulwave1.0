@@ -78,3 +78,12 @@ td:nth-child(3) { color: var(--clay); font-weight: 700; }
   .packages-page { padding: 24px 18px; }
   th, td { padding: 13px 14px; }
 }
+
+
+/* mine */
+.buyFrom {
+  text-align: center;
+  font-size: 14px;
+  color: white;
+  margin-top: 20px;
+}

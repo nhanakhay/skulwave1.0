@@ -179,6 +179,49 @@ function prepareStatements() {
     'SELECT * FROM packages WHERE id = ?'
   );
 
+  // Admin dashboard
+  preparedStatements.getAdminUsers = prepareStatement(
+    `SELECT v.id, v.hotspot_username AS username, p.name AS package_name,
+      v.status, v.created_at, v.redeemed_at, v.valid_until
+     FROM vouchers v LEFT JOIN packages p ON p.id = v.package_id
+     ORDER BY v.created_at DESC`
+  );
+  preparedStatements.getAdminSessions = prepareStatement(
+    `SELECT vs.id, vs.hotspot_username, p.name AS package_name, vs.start_time,
+      vs.expires_at, vs.end_time, vs.status
+     FROM voucher_sessions vs
+     LEFT JOIN vouchers v ON v.id = vs.voucher_id
+     LEFT JOIN packages p ON p.id = v.package_id
+     ORDER BY vs.start_time DESC`
+  );
+  preparedStatements.getDashboardSummary = prepareStatement(
+    `SELECT
+      (SELECT COUNT(*) FROM vouchers) AS total_vouchers,
+      (SELECT COUNT(*) FROM vouchers WHERE status = 'active') AS active_vouchers,
+      (SELECT COUNT(*) FROM voucher_sessions WHERE status = 'active') AS active_sessions,
+      (SELECT COUNT(*) FROM vouchers WHERE status = 'unused') AS unused_vouchers,
+      (SELECT COALESCE(SUM(p.price), 0) FROM vouchers v
+        JOIN packages p ON p.id = v.package_id WHERE v.status IN ('active', 'expired')) AS voucher_revenue,
+      (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'success') AS payment_revenue`
+  );
+  preparedStatements.getPackageAnalytics = prepareStatement(
+    `SELECT p.name, p.speed, p.price, COUNT(v.id) AS vouchers_issued,
+      SUM(CASE WHEN v.status = 'active' THEN 1 ELSE 0 END) AS active_vouchers
+     FROM packages p LEFT JOIN vouchers v ON v.package_id = p.id
+     GROUP BY p.id ORDER BY vouchers_issued DESC, p.id ASC`
+  );
+  preparedStatements.getRecentVouchers = prepareStatement(
+    `SELECT v.hotspot_username, p.name AS package_name, v.status, v.created_at
+     FROM vouchers v LEFT JOIN packages p ON p.id = v.package_id
+     ORDER BY v.created_at DESC LIMIT ?`
+  );
+  preparedStatements.getRevenueTransactions = prepareStatement(
+    `SELECT t.id, u.username, p.name AS package_name, t.amount, t.paystack_reference,
+      t.status, t.created_at FROM transactions t
+     LEFT JOIN users u ON u.id = t.user_id LEFT JOIN packages p ON p.id = t.package_id
+     ORDER BY t.created_at DESC`
+  );
+
   // ── Transactions ───────────────────────────
   preparedStatements.insertTransaction = prepareStatement(
     'INSERT INTO transactions (user_id, package_id, amount, paystack_reference, status) VALUES (?, ?, ?, ?, ?)'

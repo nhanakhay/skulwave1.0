@@ -1,11 +1,6 @@
-const apiBase = `http://${window.location.hostname}:3000/api`;
-const packageSelect = document.getElementById('packageSelect');
-const adminUsernameLabel = document.getElementById('adminUsername');
-const generatedList = document.getElementById('generatedList');
-const generatedOutput = document.getElementById('generatedOutput');
-const generateBtn = document.getElementById('generateBtn');
-const generateLoading = document.getElementById('generateLoading');
-const downloadBtn = document.getElementById('downloadBtn');
+let packageSelect;
+let generatedOutput;
+let generateBtn;
 
 const adminApiKey = localStorage.getItem('adminApiKey');
 const adminUsername = localStorage.getItem('adminUsername');
@@ -14,20 +9,15 @@ if (!adminApiKey || !adminUsername) {
     window.location.href = '../admin/adminlogin.html';
 }
 
-adminUsernameLabel.textContent = adminUsername;
+document.getElementById('adminContent').innerHTML = `<h2>Generate vouchers</h2><p class="lede">Create single-use Wi-Fi access vouchers for a package.</p><div class="panel form-card"><form name="voucherGenerator"><div class="form-grid"><label>Voucher profile<select name="package_id" id="packageSelect"></select></label><label>Quantity<input name="count" type="number" min="1" max="100" value="1"></label></div><p class="lede" style="margin:16px 0">Each voucher uses the shared hotspot password configured on the server.</p><button type="submit" id="generateBtn" class="primary-button">Generate vouchers</button></form><div id="generatedList" style="display:none;margin-top:24px"><h3>Generated vouchers</h3><div id="generatedOutput" class="generated-output"></div></div></div>`;
+packageSelect = document.getElementById('packageSelect');
+generatedOutput = document.getElementById('generatedOutput');
+generateBtn = document.getElementById('generateBtn');
+document.voucherGenerator.addEventListener('submit', handleGenerateVouchers);
 
 async function loadPackages() {
     try {
-        const response = await fetch(`${apiBase}/admin/packages`, {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-admin-key': adminApiKey,
-            },
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || 'Unable to load packages');
-        }
+        const data = await adminApi.get('/packages');
         packageSelect.innerHTML = data.packages
             .map((pkg) => `<option value="${pkg.id}">${pkg.name} (${pkg.speed})</option>`)
             .join('');
@@ -35,15 +25,6 @@ async function loadPackages() {
         console.error(err);
         alert('Unable to load voucher profiles.');
     }
-}
-
-function makeRandomString(length) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
 }
 
 async function handleGenerateVouchers(event) {
@@ -58,13 +39,12 @@ async function handleGenerateVouchers(event) {
     }
 
     generateBtn.disabled = true;
-    generateLoading.style.display = 'block';
 
     const results = [];
 
     for (let i = 0; i < count; i++) {
         try {
-            const response = await fetch(`${apiBase}/vouchers/generate`, {
+            const response = await fetch('/api/vouchers/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -89,16 +69,9 @@ async function handleGenerateVouchers(event) {
 
     generatedOutput.textContent = results.join('\n');
     console.log(results);
-    generatedList.style.display = 'block';
+    document.getElementById('generatedList').style.display = 'block';
     generateBtn.disabled = false;
-    generateLoading.style.display = 'none';
     return false;
-}
-
-function logoutAdmin() {
-    localStorage.removeItem('adminApiKey');
-    localStorage.removeItem('adminUsername');
-    window.location.href = '../admin/adminlogin.html';
 }
 
 loadPackages();

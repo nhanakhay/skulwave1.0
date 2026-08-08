@@ -6,47 +6,12 @@
     <meta http-equiv="expires" content="-1" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Voucher Generator | SkulWave</title>
-    <link rel="stylesheet" href="../css/common.css" />
-    <link rel="stylesheet" href="../css/login.css" />
+    <link rel="stylesheet" href="../css/dashboard.css" />
 </head>
-<body>
-    <div class="ie-fixMinHeight">
-        <div class="main">
-            <div class="wrap animated fadeIn container">
-                <h1>Generate Vouchers</h1>
-                <div id="adminInfo" style="margin-bottom:16px; color:#333;">
-                    <strong>Admin:</strong> <span id="adminUsername"></span>
-                </div>
-                <form name="voucherGenerator" onsubmit="return handleGenerateVouchers(event)">
-                    <label>
-                        <span style="font-size:14px; color:#333; margin-bottom:8px; display:block;">Voucher profile</span>
-                        <select name="package_id" id="packageSelect"></select>
-                    </label>
-                    <label>
-                        <input name="count" type="number" min="1" value="1" placeholder="Number of vouchers" />
-                    </label>
-                    <p style="font-size:13px; color:#666; margin:-4px 0 12px;">Each voucher will get a profile-based username like <strong>rd-ABC123XYZ9</strong> and use the fixed password <strong>skulwave</strong>.</p>
-                    <button type="submit" id="generateBtn" class="submit-btn">Generate Vouchers</button>
-                    <div id="generateLoading" class="loading-spinner">
-                        <div class="spinner"></div>
-                        <p>Generating vouchers...</p>
-                    </div>
-                </form>
-                <div id="generatedList" style="margin-top:24px; display:none;">
-                    <h2 style="font-size:18px; color:#333; margin-bottom:12px;">Generated Vouchers</h2>
-                    
-                    <div id="generatedOutput" style="white-space:pre-wrap; word-break:break-word; background:#f3f3f3; border-radius:10px; padding:16px; color:#333;"></div>
-                </div>
-                <button id="logoutAdmin" onclick="logoutAdmin()" style="margin-top:16px; width:100%; background:#ff5f5f;">Logout</button>
-                <button id="downloadBtn" onclick="downloadVoucher()" style="margin-top:16px; 
-                    width:100%; background:#ff5f5f;"> Download Vouchers</button>
-            </div>
-        </div>
-    </div>
-    <footer>
-        <p class="info bt">Powered by SkulWave Technologies</p>
-    </footer>
-    <script src="../md5.js"></script>
+<body class="admin-body" data-page="generate-vouchers">
+    <div class="admin-shell" id="adminLayout"></div>
+    <script src="../js/shared/api.js"></script>
+    <script src="../js/shared/sidebar.js"></script>
     <script src="../js/generate-vouchers.js"></script>
 </body>
 </html>
