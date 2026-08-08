@@ -126,6 +126,10 @@
       stage.classList.toggle('mode-voucher', voucher);
 
     }
+
+    if (new URLSearchParams(window.location.search).get('voucher') === '1') {
+      setMode(true);
+    }
   </script>
 
   <script src="js/login.js"></script>
