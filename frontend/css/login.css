@@ -150,6 +150,20 @@
   button.submit:active{ transform:translateY(1px); }
   button.submit:focus-visible{ outline:2px solid var(--focus); outline-offset:3px; }
 
+  .packages-button{
+    width:100%;
+    margin-top:12px;
+    padding:11px 20px;
+    border:1.5px solid var(--brass-2);
+    border-radius:8px;
+    background:transparent;
+    color:var(--brass-2);
+    font:600 14px 'IBM Plex Sans', sans-serif;
+    cursor:pointer;
+  }
+  .packages-button:hover{ background:var(--paper-dim); }
+  .packages-button:focus-visible{ outline:2px solid var(--focus); outline-offset:3px; }
+
   .switch-mobile{
     display:none;
     text-align:center;
