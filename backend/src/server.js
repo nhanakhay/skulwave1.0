@@ -7,6 +7,7 @@ const compression = require("compression");
 // const authRoutes = require("./routes/auth");
 const voucherRoutes = require("./routes/vouchers");
 const adminRoutes = require("./routes/admin");
+const resellerRoutes = require('./routes/resellers');
 const { scheduleExpiryJob } = require("./jobs/expiryJob");
 const adminAuth = require('./middleware/adminAuth')
 
@@ -27,6 +28,7 @@ app.use(express.static(path.join(__dirname, "../../frontend")));
 // Mount admin routes without global adminAuth so the login endpoint remains accessible.
 console.log('[server] adminRoutes loaded?', !!adminRoutes, 'stack size', adminRoutes.stack ? adminRoutes.stack.length : 0);
 app.use("/api/admin", adminRoutes);
+app.use('/api/resellers', resellerRoutes);
 console.log('[server] app._router after admin mount?', !!app._router, 'stack size', app._router ? app._router.stack.length : 'none');
 // Protect voucher generation specifically
 app.use("/api/vouchers/generate", adminAuth);

@@ -46,6 +46,15 @@ const PROFILE_MAP = {
   12: 'vip-monthly',
 };
 
+async function generateVoucher({ packageId, createdBy = 'admin', resellerId = null, status = 'unused' }) {
+  const pkg = await db.getPreparedStatement('getPackageById').get(packageId);
+  if (!pkg || !PROFILE_MAP[packageId]) throw new Error('Invalid package');
+  let username; do { username = generateHotspotUsername(PROFILE_MAP[packageId]); } while (await db.getPreparedStatement('getVoucherByUsername').get(username));
+  const password = resolveSharedPassword();
+  const result = await db.getPreparedStatement('insertVoucher').run(username, await bcrypt.hash(password, 8), packageId, null, status, createdBy, resellerId);
+  return { id: result.lastID, hotspot_username: username, package_id: packageId, package_name: pkg.name, status, shared_password: password, price: pkg.price };
+}
+
 // ─────────────────────────────────────────────
 // POST /api/vouchers/generate
 // Admin generates a voucher — saves to SQLite only.
@@ -102,7 +111,8 @@ router.post('/generate', async (req, res) => {
       package_id,
       null, // valid_until — set at first auth
       'unused', // status — not yet redeemed
-      created_by
+      created_by,
+      null
     );
 
     res.json({
@@ -321,5 +331,6 @@ router.get('/:username', async (req, res) => {
 
 // Expose the handler so other routes (eg. POST /login) can reuse the same logic
 router.redeemVoucher = redeemVoucher;
+router.generateVoucher = generateVoucher;
 
 module.exports = router;

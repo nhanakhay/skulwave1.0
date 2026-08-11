@@ -1,28 +1,11 @@
-const express = require('express');
-const router = express.Router();
-const db = require('../db/database');
-
-router.post('/login', (req, res) => {
-  const { username, password } = req.body || {};
-
-  if (
-    username === process.env.ADMIN_USERNAME &&
-    password === process.env.ADMIN_PASSWORD
-  ) {
-    return res.json({ apiKey: process.env.ADMIN_API_KEY });
-  }
-
-  return res.status(401).json({ error: 'Invalid admin credentials' });
-});
-
-router.get('/packages', async (req, res) => {
-  try {
-    const packages = await db.getPreparedStatement('getAllPackages').all();
-    res.json({ packages });
-  } catch (err) {
-    console.error('[admin/packages]', err);
-    res.status(500).json({ error: err.message || 'Unable to fetch packages' });
-  }
-});
-
-module.exports = router;
+const router=require('express').Router(),db=require('../db/database'),auth=require('../middleware/adminAuth'),bcrypt=require('bcryptjs');
+const users=require('../controllers/userController'),sessions=require('../controllers/sessionController'),revenue=require('../controllers/revenueController'),analytics=require('../controllers/analyticsController');
+router.post('/login',(req,res)=>{const {username,password}=req.body||{};if(username===process.env.ADMIN_USERNAME&&password===process.env.ADMIN_PASSWORD)return res.json({apiKey:process.env.ADMIN_API_KEY});res.status(401).json({error:'Invalid admin credentials'});});router.use(auth);
+router.get('/packages',async(_q,res)=>res.json({packages:await db.getPreparedStatement('getAllPackages').all()}));
+router.patch('/packages/:id',async(req,res)=>{const b=req.body||{},price=Number(b.price),commission=Number(b.reseller_commission_percent);if(!Number.isFinite(price)||price<0||!Number.isFinite(commission)||commission<0||commission>100)return res.status(400).json({error:'Invalid price or commission'});await db.runAsync('UPDATE packages SET price=?,reseller_commission_percent=?,reseller_enabled=? WHERE id=?',[price,commission,b.reseller_enabled?1:0,req.params.id]);res.json({message:'Package updated'});});
+router.get('/users',users.list);router.get('/sessions',sessions.list);router.get('/revenue',revenue.list);router.get('/analytics',analytics.overview);router.get('/dashboard',analytics.overview);
+router.get('/resellers',async(_q,res)=>res.json({resellers:await db.allAsync(`SELECT r.id,r.name,r.username,r.phone,r.status,r.created_at,r.last_login_at,COALESCE(SUM(s.student_price),0) total_sales,COALESCE(SUM(s.reseller_commission),0) commission,COALESCE(SUM(s.skulwave_amount),0)-COALESCE((SELECT SUM(amount) FROM reseller_settlements x WHERE x.reseller_id=r.id),0) outstanding FROM resellers r LEFT JOIN reseller_sales s ON s.reseller_id=r.id GROUP BY r.id ORDER BY r.created_at DESC`)}));
+router.post('/resellers',async(req,res)=>{const b=req.body||{};if(!b.name||!b.username||!b.password||b.password.length<6)return res.status(400).json({error:'Name, username, and 6-character password required'});try{const x=await db.runAsync('INSERT INTO resellers(name,username,password_hash,phone) VALUES(?,?,?,?)',[b.name,b.username,await bcrypt.hash(b.password,10),b.phone||'']);res.status(201).json({id:x.lastID});}catch(_){res.status(409).json({error:'Username already exists'});}});
+router.patch('/resellers/:id',async(req,res)=>{const b=req.body||{};if(!['ACTIVE','SUSPENDED'].includes(b.status))return res.status(400).json({error:'Invalid status'});await db.runAsync('UPDATE resellers SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',[b.status,req.params.id]);res.json({message:'Updated'});});
+router.get('/resellers/:id',async(req,res)=>{const id=req.params.id,reseller=await db.getAsync('SELECT id,name,username,phone,status,created_at,last_login_at FROM resellers WHERE id=?',[id]);if(!reseller)return res.status(404).json({error:'Not found'});const [vouchers,sales,settlements]=await Promise.all([db.allAsync('SELECT v.*,p.name package_name,p.price FROM vouchers v JOIN packages p ON p.id=v.package_id WHERE reseller_id=? ORDER BY created_at DESC',[id]),db.allAsync('SELECT s.*,v.hotspot_username,p.name package_name FROM reseller_sales s JOIN vouchers v ON v.id=s.voucher_id JOIN packages p ON p.id=s.package_id WHERE s.reseller_id=? ORDER BY sold_at DESC',[id]),db.allAsync('SELECT * FROM reseller_settlements WHERE reseller_id=? ORDER BY created_at DESC',[id])]);res.json({reseller,vouchers,sales,settlements});});
+router.post('/resellers/:id/settlements',async(req,res)=>{const b=req.body||{};if(!Number.isFinite(Number(b.amount))||Number(b.amount)<=0||!['CASH','MOMO','OTHER'].includes(b.payment_method))return res.status(400).json({error:'Invalid settlement'});const x=await db.runAsync('INSERT INTO reseller_settlements(reseller_id,amount,payment_method,reference,notes,recorded_by) VALUES(?,?,?,?,?,?)',[req.params.id,Number(b.amount),b.payment_method,b.reference||'',b.notes||'','admin']);res.status(201).json({id:x.lastID});});module.exports=router;

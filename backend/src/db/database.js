@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS packages (
   data_cap TEXT NOT NULL,
   data_cap_bytes INTEGER NOT NULL,
   price REAL NOT NULL,
+  reseller_enabled INTEGER NOT NULL DEFAULT 1,
+  reseller_commission_percent REAL NOT NULL DEFAULT 1,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -94,8 +96,15 @@ CREATE TABLE IF NOT EXISTS vouchers (
   created_by TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   redeemed_at DATETIME,
+  reseller_id INTEGER,
+  sold_at DATETIME,
   FOREIGN KEY (package_id) REFERENCES packages(id)
 );
+
+CREATE TABLE IF NOT EXISTS resellers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, phone TEXT, status TEXT NOT NULL DEFAULT 'ACTIVE', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_login_at DATETIME);
+CREATE TABLE IF NOT EXISTS reseller_sales (id INTEGER PRIMARY KEY AUTOINCREMENT, voucher_id INTEGER UNIQUE NOT NULL, reseller_id INTEGER NOT NULL, package_id INTEGER NOT NULL, student_price REAL NOT NULL, reseller_commission REAL NOT NULL, skulwave_amount REAL NOT NULL, sold_at DATETIME NOT NULL, redeemed_at DATETIME, settlement_status TEXT NOT NULL DEFAULT 'UNSETTLED', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS reseller_settlements (id INTEGER PRIMARY KEY AUTOINCREMENT, reseller_id INTEGER NOT NULL, amount REAL NOT NULL, payment_method TEXT NOT NULL, reference TEXT, notes TEXT, recorded_by TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor_type TEXT, actor_id INTEGER, event TEXT NOT NULL, entity_type TEXT, entity_id INTEGER, details TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
 
 CREATE TABLE IF NOT EXISTS voucher_sessions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,6 +187,12 @@ function prepareStatements() {
   preparedStatements.getPackageById = prepareStatement(
     'SELECT * FROM packages WHERE id = ?'
   );
+  preparedStatements.getAdminUsers = prepareStatement(`SELECT v.id,v.hotspot_username AS username,p.name AS package_name,v.status,v.created_at,v.redeemed_at,v.valid_until FROM vouchers v LEFT JOIN packages p ON p.id=v.package_id ORDER BY v.created_at DESC`);
+  preparedStatements.getAdminSessions = prepareStatement(`SELECT vs.id,vs.hotspot_username,p.name AS package_name,vs.start_time,vs.expires_at,vs.end_time,vs.status FROM voucher_sessions vs LEFT JOIN vouchers v ON v.id=vs.voucher_id LEFT JOIN packages p ON p.id=v.package_id ORDER BY vs.start_time DESC`);
+  preparedStatements.getDashboardSummary = prepareStatement(`SELECT (SELECT COUNT(*) FROM vouchers) total_vouchers,(SELECT COUNT(*) FROM vouchers WHERE status IN ('active','redeemed')) active_vouchers,(SELECT COUNT(*) FROM voucher_sessions WHERE status='active') active_sessions,(SELECT COUNT(*) FROM vouchers WHERE status IN ('unused','generated')) unused_vouchers,(SELECT COALESCE(SUM(p.price),0) FROM vouchers v JOIN packages p ON p.id=v.package_id WHERE v.status IN ('active','expired','sold','redeemed')) voucher_revenue,(SELECT COALESCE(SUM(amount),0) FROM transactions WHERE status='success') payment_revenue`);
+  preparedStatements.getPackageAnalytics = prepareStatement(`SELECT p.name,p.speed,p.price,COUNT(v.id) vouchers_issued,SUM(CASE WHEN v.status IN ('active','redeemed') THEN 1 ELSE 0 END) active_vouchers FROM packages p LEFT JOIN vouchers v ON v.package_id=p.id GROUP BY p.id ORDER BY vouchers_issued DESC,p.id`);
+  preparedStatements.getRecentVouchers = prepareStatement(`SELECT v.hotspot_username,p.name AS package_name,v.status,v.created_at FROM vouchers v LEFT JOIN packages p ON p.id=v.package_id ORDER BY v.created_at DESC LIMIT ?`);
+  preparedStatements.getRevenueTransactions = prepareStatement(`SELECT t.id,u.username,p.name AS package_name,t.amount,t.paystack_reference,t.status,t.created_at FROM transactions t LEFT JOIN users u ON u.id=t.user_id LEFT JOIN packages p ON p.id=t.package_id ORDER BY t.created_at DESC`);
 
   // ── Transactions ───────────────────────────
   preparedStatements.insertTransaction = prepareStatement(
@@ -193,7 +208,7 @@ function prepareStatements() {
   // ── Vouchers ───────────────────────────────
   preparedStatements.insertVoucher = prepareStatement(
     // Use COALESCE for valid_until to handle older DBs where the column is NOT NULL
-    'INSERT INTO vouchers (hotspot_username, hotspot_password, package_id, valid_until, status, created_by) VALUES (?, ?, ?, COALESCE(?, datetime("now")), ?, ?)'
+    'INSERT INTO vouchers (hotspot_username, hotspot_password, package_id, valid_until, status, created_by, reseller_id) VALUES (?, ?, ?, COALESCE(?, datetime("now")), ?, ?, ?)'
   );
   preparedStatements.getActiveVoucherSession = prepareStatement(
     'SELECT * FROM voucher_sessions WHERE voucher_id = ? AND status = "active" LIMIT 1'
@@ -263,6 +278,9 @@ function prepareStatements() {
 
 // Attach lookup helper so route files can call db.getPreparedStatement()
 db.getPreparedStatement = (name) => preparedStatements[name];
+db.allAsync = (sql, params=[]) => new Promise((resolve,reject)=>db.all(sql,params,(err,rows)=>err?reject(err):resolve(rows)));
+db.getAsync = (sql, params=[]) => new Promise((resolve,reject)=>db.get(sql,params,(err,row)=>err?reject(err):resolve(row)));
+db.runAsync = (sql, params=[]) => new Promise((resolve,reject)=>db.run(sql,params,function(err){err?reject(err):resolve({lastID:this.lastID,changes:this.changes});}));
 
 // ─────────────────────────────────────────────
 // Drop legacy tables if schema has changed
@@ -353,8 +371,8 @@ function initializeDatabase(callback) {
           return;
         }
 
-        prepareStatements();
-
+        const migrations=['ALTER TABLE packages ADD COLUMN reseller_enabled INTEGER NOT NULL DEFAULT 1','ALTER TABLE packages ADD COLUMN reseller_commission_percent REAL NOT NULL DEFAULT 1','ALTER TABLE vouchers ADD COLUMN reseller_id INTEGER','ALTER TABLE vouchers ADD COLUMN sold_at DATETIME']; let migrationIndex=0;
+        const migrate=()=>{ if(migrationIndex<migrations.length) return db.run(migrations[migrationIndex++],migrate); prepareStatements();
         seedPackages((seedErr) => {
           if (seedErr) {
             console.error('[db] Failed to seed packages:', seedErr);
@@ -364,7 +382,7 @@ function initializeDatabase(callback) {
             markDatabaseReady();
           }
           if (callback) callback(seedErr);
-        });
+        }); }; migrate();
       });
     });
   });
