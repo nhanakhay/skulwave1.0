@@ -1,0 +1,14 @@
+const router = require("express").Router();
+const c = require("../controllers/resellerController");
+const auth = require("../middleware/resellerAuth");
+router.post("/login", c.login);router.post('/logout', auth, (req, res) => res.json({ message: 'Logged out' }));router.use(auth);
+router.get("/me", c.me);
+router.get("/dashboard", c.dashboard);
+router.get("/packages", c.packages);
+router.post("/vouchers", c.generate);
+router.get("/vouchers", c.vouchers);
+router.post("/vouchers/:id/sell", c.sell);
+router.get("/sales", c.sales);
+router.get("/settlements", c.settlements);
+router.get("/balance", c.dashboard);
+module.exports = router;

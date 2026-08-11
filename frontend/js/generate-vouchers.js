@@ -80,7 +80,7 @@ async function handleGenerateVouchers(event) {
                 throw new Error(data.error || 'Failed to create voucher');
             }
             const voucherUsername = data.voucher?.hotspot_username || 'unknown';
-            results.push(`${voucherUsername}:skulwave (${data.voucher.package_name})`);
+            results.push(`${voucherUsername}:p(${data.voucher.package_name})`);
         } catch (err) {
             console.error(err);
             results.push(`ERROR: ${err.message}`);

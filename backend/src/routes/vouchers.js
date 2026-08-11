@@ -15,7 +15,7 @@ function generateHotspotUsername(profileName = '', length = 10) {
     .join('');
 
   const safePrefix = prefix || 'vu';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const chars = '0123456789';
   let result = '';
   for (let i = 0; i < length; i += 1) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
