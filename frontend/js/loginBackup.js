@@ -5,15 +5,14 @@ async function handleLogin(event) {
     event.preventDefault();
 
     const username = document.login.username.value.trim();
-    const password = document.login.password.value.trim();
     const loginBtn = document.getElementById("loginBtn");
     const loginLoading = document.getElementById("loginLoading");
 
     console.log(username);
     console.log(password);
 
-    if (!username || !password) {
-        alert("Please enter both username and password.");
+    if (!username) {
+        alert("Please enter your voucher code.");
         return false;
     }
 
@@ -27,7 +26,7 @@ async function handleLogin(event) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ hotspot_username: username, hotspot_password: password }),
+            body: JSON.stringify({ hotspot_username: username }),
         });
 
         const data = await response.json();
@@ -51,24 +50,5 @@ async function handleLogin(event) {
     }
 }
 
-function doLogin() {
-    document.sendin.username.value = document.login.username.value;
-    document.sendin.password.value = hexMD5('$(chap-id)' + document.login.password.value + '$(chap-challenge)');
-    document.sendin.submit();
-    return false;
-}
 
-function togglePassword() {
-    const passwordInput = document.login.password;
-    const toggle = document.querySelector('.password-toggle');
-    if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggle.textContent = '🙈';
-        toggle.title = 'Hide password';
-    } else {
-        passwordInput.type = 'password';
-        toggle.textContent = '👁';
-        toggle.title = 'Show password';
-    }
-}
 

@@ -1,3 +1,5 @@
+const db = require('../db/database');
+exports.list = async (_req,res) => { try { res.json({users:await db.getPreparedStatement('getAdminUsers').all()}); } catch (_) { res.status(500).json({error:'Unable to load users'}); } };
 // const bcrypt = require("bcryptjs");
 // const db = require("../db/database");
 

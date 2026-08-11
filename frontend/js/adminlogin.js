@@ -48,7 +48,7 @@ async function handleAdminLogin(event) {
 
         localStorage.setItem('adminApiKey', data.apiKey);
         localStorage.setItem('adminUsername', username);
-        window.location.href = 'generate-vouchers.html';
+        window.location.href = '../admin/generate-vouchers.html';
 
     } catch (err) {
         console.error(err);

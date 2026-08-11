@@ -15,7 +15,7 @@ function generateHotspotUsername(profileName = '', length = 10) {
     .join('');
 
   const safePrefix = prefix || 'vu';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const chars = '0123456789';
   let result = '';
   for (let i = 0; i < length; i += 1) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -45,6 +45,15 @@ const PROFILE_MAP = {
   11: 'vip-weekly',
   12: 'vip-monthly',
 };
+
+async function generateVoucher({ packageId, createdBy = 'admin', resellerId = null, status = 'unused' }) {
+  const pkg = await db.getPreparedStatement('getPackageById').get(packageId);
+  if (!pkg || !PROFILE_MAP[packageId]) throw new Error('Invalid package');
+  let username; do { username = generateHotspotUsername(PROFILE_MAP[packageId]); } while (await db.getPreparedStatement('getVoucherByUsername').get(username));
+  const password = resolveSharedPassword();
+  const result = await db.getPreparedStatement('insertVoucher').run(username, await bcrypt.hash(password, 8), packageId, null, status, createdBy, resellerId);
+  return { id: result.lastID, hotspot_username: username, package_id: packageId, package_name: pkg.name, status, shared_password: password, price: pkg.price };
+}
 
 // ─────────────────────────────────────────────
 // POST /api/vouchers/generate
@@ -102,7 +111,8 @@ router.post('/generate', async (req, res) => {
       package_id,
       null, // valid_until — set at first auth
       'unused', // status — not yet redeemed
-      created_by
+      created_by,
+      null
     );
 
     res.json({
@@ -155,6 +165,7 @@ async function redeemVoucher(req, res) {
     if (voucher.status === 'expired') {
       return res.status(400).json({ error: 'Voucher has expired' });
     }
+    if (voucher.status === 'generated') return res.status(400).json({ error: 'Voucher must be marked sold before redemption' });
 
     // If already active, check if still valid
     if (voucher.status === 'active') {
@@ -186,7 +197,7 @@ async function redeemVoucher(req, res) {
     let validUntil;
     let isFirstRedeem = false;
 
-    if (voucher.status === 'unused') {
+    if (voucher.status === 'unused' || voucher.status === 'sold') {
       isFirstRedeem = true;
       validUntil = new Date(now.getTime() + pkg.duration_days * 24 * 60 * 60 * 1000);
 
@@ -209,7 +220,7 @@ async function redeemVoucher(req, res) {
       // Now safe to update SQLite
       // ─────────────────────────────────────────
       await db.getPreparedStatement('updateVoucherStatus').run(
-        'active',
+        voucher.reseller_id ? 'redeemed' : 'active',
         now.toISOString(),
         voucher.id
       );
@@ -218,6 +229,7 @@ async function redeemVoucher(req, res) {
         validUntil.toISOString(),
         voucher.id
       );
+      if (voucher.reseller_id) await db.runAsync('UPDATE reseller_sales SET redeemed_at=? WHERE voucher_id=?', [now.toISOString(), voucher.id]);
 
     } else {
       // Already active — use existing valid_until
@@ -245,6 +257,7 @@ async function redeemVoucher(req, res) {
       voucher: {
         id: voucher.id,
         username: hotspot_username,
+        password: sharedPassword,
         package: pkg,
         valid_until: validUntil.toISOString(),
         status: 'active',
@@ -320,5 +333,6 @@ router.get('/:username', async (req, res) => {
 
 // Expose the handler so other routes (eg. POST /login) can reuse the same logic
 router.redeemVoucher = redeemVoucher;
+router.generateVoucher = generateVoucher;
 
 module.exports = router;
