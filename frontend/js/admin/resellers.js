@@ -1,5 +1,5 @@
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const ngn = (v) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(v || 0);
+const ngn = (v) => new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(v || 0);
 
 async function loadResellers() {
   const c = document.getElementById('adminContent');
@@ -16,6 +16,7 @@ async function loadResellers() {
           <label>Phone<input name="phone"></label>
           <label>Username<input name="username" required></label>
           <label>Password<input name="password" type="password" minlength="6" required></label>
+          <label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="0" required></label>
           <button class="primary-button">Create reseller</button>
         </form>
       </div>
@@ -26,6 +27,7 @@ async function loadResellers() {
               <th>Reseller</th>
               <th>Sales</th>
               <th>Commission</th>
+              <th>Credit</th>
               <th>Outstanding</th>
               <th>Status</th>
               <th>Details</th>
@@ -37,12 +39,13 @@ async function loadResellers() {
                 <td><strong>${esc(r.name)}</strong><br><small>${esc(r.username)}</small></td>
                 <td>${ngn(r.total_sales)}</td>
                 <td>${ngn(r.commission)}</td>
+                <td>${ngn(r.credit_balance)}</td>
                 <td>${ngn(r.outstanding)}</td>
                 <td><span class="badge ${r.status === 'ACTIVE' ? 'active' : 'expired'}">${esc(r.status)}</span></td>
                 <td><button class="primary-button view-detail" data-id="${r.id}">View</button></td>
                 <td><button class="primary-button toggle" data-id="${r.id}" data-status="${r.status}">${r.status === 'ACTIVE' ? 'Suspend' : 'Activate'}</button></td>
               </tr>
-            `).join('') : '<tr><td colspan="7" class="empty">No resellers yet.</td></tr>'}</tbody>
+            `).join('') : '<tr><td colspan="8" class="empty">No resellers yet.</td></tr>'}</tbody>
         </table>
       </div>
     `;

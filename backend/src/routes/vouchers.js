@@ -165,6 +165,7 @@ async function redeemVoucher(req, res) {
     if (voucher.status === 'expired') {
       return res.status(400).json({ error: 'Voucher has expired' });
     }
+    if (voucher.status === 'generated') return res.status(400).json({ error: 'Voucher must be marked sold before redemption' });
 
     // If already active, check if still valid
     if (voucher.status === 'active') {
@@ -196,7 +197,7 @@ async function redeemVoucher(req, res) {
     let validUntil;
     let isFirstRedeem = false;
 
-    if (voucher.status === 'unused') {
+    if (voucher.status === 'unused' || voucher.status === 'sold') {
       isFirstRedeem = true;
       validUntil = new Date(now.getTime() + pkg.duration_days * 24 * 60 * 60 * 1000);
 
@@ -219,7 +220,7 @@ async function redeemVoucher(req, res) {
       // Now safe to update SQLite
       // ─────────────────────────────────────────
       await db.getPreparedStatement('updateVoucherStatus').run(
-        'active',
+        voucher.reseller_id ? 'redeemed' : 'active',
         now.toISOString(),
         voucher.id
       );
@@ -228,6 +229,7 @@ async function redeemVoucher(req, res) {
         validUntil.toISOString(),
         voucher.id
       );
+      if (voucher.reseller_id) await db.runAsync('UPDATE reseller_sales SET redeemed_at=? WHERE voucher_id=?', [now.toISOString(), voucher.id]);
 
     } else {
       // Already active — use existing valid_until

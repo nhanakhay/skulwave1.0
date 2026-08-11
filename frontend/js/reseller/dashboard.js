@@ -15,7 +15,7 @@ const api = async (path, opts = {}) => {
   return data;
 };
 
-const fmt = (value) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(value || 0);
+const fmt = (value) => new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(value || 0);
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 async function render() {
@@ -42,6 +42,7 @@ async function render() {
       <div class="stat-card"><div class="stat-label">Today's sales</div><div class="stat-value">${fmt(summary.today_sales)}</div></div>
       <div class="stat-card"><div class="stat-label">Today's commission</div><div class="stat-value">${fmt(summary.today_commission)}</div></div>
       <div class="stat-card"><div class="stat-label">Amount owed</div><div class="stat-value">${fmt(summary.outstanding)}</div></div>
+      <div class="stat-card"><div class="stat-label">Selling credit</div><div class="stat-value">${fmt(summary.credit_balance)}</div><div class="stat-note">Deducted when a voucher is marked sold</div></div>
       <div class="stat-card"><div class="stat-label">Vouchers sold</div><div class="stat-value">${summary.vouchers_sold}</div></div>
     </div>
 
@@ -49,7 +50,7 @@ async function render() {
       <h3>Generate voucher</h3>
       <form id="generate">
         <div class="form-grid">
-          <label>Package<select name="package_id">${packages.packages.map((pkg) => `<option value="${pkg.id}">${esc(pkg.name)} — ${fmt(pkg.price)}</option>`).join('')}</select></label>
+          <label>Package<select name="package_id">${packages.packages.map((pkg) => `<option value="${pkg.id}">${esc(pkg.name)} â€” ${fmt(pkg.price)}</option>`).join('')}</select></label>
           <button class="primary-button">Generate</button>
         </div>
       </form>
@@ -66,7 +67,7 @@ async function render() {
               <td>${esc(voucher.package_name)}</td>
               <td>${fmt(voucher.price)}</td>
               <td><span class="badge ${esc(voucher.status)}">${esc(voucher.status)}</span></td>
-              <td>${voucher.status === 'generated' ? `<button class="primary-button sell" data-id="${voucher.id}">Mark sold</button>` : esc(voucher.sold_at || '—')}</td>
+              <td>${voucher.status === 'generated' ? `<button class="primary-button sell" data-id="${voucher.id}">Mark sold</button>` : esc(voucher.sold_at || 'â€”')}</td>
             </tr>
           `).join('') || '<tr><td colspan="5" class="empty">No vouchers yet.</td></tr>'}</tbody>
       </table>
@@ -80,8 +81,8 @@ async function render() {
             <tr>
               <td>${fmt(item.amount)}</td>
               <td>${esc(item.payment_method)}</td>
-              <td>${esc(item.reference || '—')}</td>
-              <td>${esc(item.notes || '—')}</td>
+              <td>${esc(item.reference || 'â€”')}</td>
+              <td>${esc(item.notes || 'â€”')}</td>
               <td>${esc(new Date(item.created_at).toLocaleString())}</td>
             </tr>
           `).join('') : '<tr><td colspan="5" class="empty">No settlements recorded yet.</td></tr>'}</tbody>

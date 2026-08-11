@@ -1,6 +1,6 @@
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const ngn = (v) => new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(v || 0);
-const fmtDate = (value) => value ? new Date(value).toLocaleString() : '—';
+const ngn = (v) => new Intl.NumberFormat('en-GH', { style: 'currency', currency: 'GHS' }).format(v || 0);
+const fmtDate = (value) => value ? new Date(value).toLocaleString() : 'â€”';
 
 function sum(values, selector) {
   return values.reduce((total, item) => total + Number(selector(item) || 0), 0);
@@ -15,7 +15,7 @@ async function loadResellerDetail() {
     return;
   }
 
-  content.innerHTML = '<div class="panel"><div class="empty">Loading reseller details…</div></div>';
+  content.innerHTML = '<div class="panel"><div class="empty">Loading reseller detailsâ€¦</div></div>';
 
   try {
     const data = await adminApi.get(`/resellers/${encodeURIComponent(resellerId)}`);
@@ -38,7 +38,7 @@ async function loadResellerDetail() {
             <div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-value">${ngn(totalOutstanding)}</div></div>
           </div>
           <div class="panel"><h3>Account</h3>
-            <p><strong>Phone:</strong> ${esc(reseller.phone || '—')}</p>
+            <p><strong>Phone:</strong> ${esc(reseller.phone || 'â€”')}</p>
             <p><strong>Created:</strong> ${fmtDate(reseller.created_at)}</p>
             <p><strong>Last login:</strong> ${fmtDate(reseller.last_login_at)}</p>
           </div>
@@ -55,7 +55,7 @@ async function loadResellerDetail() {
                 <td>${esc(voucher.package_name)}</td>
                 <td>${ngn(voucher.price)}</td>
                 <td><span class="badge ${esc(voucher.status)}">${esc(voucher.status)}</span></td>
-                <td>${esc(voucher.sold_at || '—')}</td>
+                <td>${esc(voucher.sold_at || 'â€”')}</td>
               </tr>
             `).join('') || '<tr><td colspan="5" class="empty">No vouchers yet.</td></tr>'}</tbody>
         </table>
@@ -79,6 +79,14 @@ async function loadResellerDetail() {
       </div>
 
       <div class="panel form-card" style="margin-top:20px">
+        <h3>Set selling credit</h3>
+        <form id="creditForm" class="form-grid">
+          <label>Available credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="${Number(reseller.credit_balance || 0)}" required></label>
+          <button class="primary-button">Save credit</button>
+        </form>
+      </div>
+
+      <div class="panel form-card" style="margin-top:20px">
         <h3>Record settlement</h3>
         <form id="settlementForm" class="form-grid">
           <label>Amount<input name="amount" type="number" min="0.01" step="0.01" required></label>
@@ -97,8 +105,8 @@ async function loadResellerDetail() {
               <tr>
                 <td>${ngn(item.amount)}</td>
                 <td>${esc(item.payment_method)}</td>
-                <td>${esc(item.reference || '—')}</td>
-                <td>${esc(item.notes || '—')}</td>
+                <td>${esc(item.reference || 'â€”')}</td>
+                <td>${esc(item.notes || 'â€”')}</td>
                 <td>${esc(new Date(item.created_at).toLocaleString())}</td>
               </tr>
             `).join('') || '<tr><td colspan="5" class="empty">No settlements yet.</td></tr>'}</tbody>
@@ -108,6 +116,16 @@ async function loadResellerDetail() {
 
     document.getElementById('backButton').onclick = () => {
       location.href = 'resellers.html';
+    };
+
+    document.getElementById('creditForm').onsubmit = async (event) => {
+      event.preventDefault();
+      try {
+        await adminApi.request(`/resellers/${encodeURIComponent(resellerId)}`, {
+          method: 'PATCH', body: JSON.stringify(Object.fromEntries(new FormData(event.target))),
+        });
+        await loadResellerDetail();
+      } catch (err) { alert(err.message); }
     };
 
     document.getElementById('settlementForm').onsubmit = async (event) => {
