@@ -1,5 +1,5 @@
 
-const apiBase = `${window.location.protocol}//${window.location.hostname}:3000/api/vouchers/redeem`;
+const apiBase = `${window.location.protocol}//${window.location.hostname}/api/vouchers/redeem`;
 
 const query = new URLSearchParams(window.location.search);
 const routerLoginUrl = query.get('router-login');
@@ -12,10 +12,12 @@ async function handleLogin(event) {
     event.preventDefault();
 
     const usernameInput = document.getElementById('vUsername');
+    const vFullNameInput = document.getElementById('vFullName') || document.getElementById('vFullname');
     const loginBtn = document.getElementById("vLoginBtn");
     const loginLoading = document.getElementById("vLoginLoading");
 
     const username = usernameInput?.value?.trim() || "";
+    const buyerFullName = vFullNameInput?.value?.trim() || "";
 
     if (!username) {
         alert("Please enter your Voucher.");
@@ -32,7 +34,7 @@ async function handleLogin(event) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ hotspot_username: username }),
+            body: JSON.stringify({ hotspot_username: username, vFullname: buyerFullName, buyer_full_name: buyerFullName }),
         });
 
         const data = await response.json().catch(() => ({}));

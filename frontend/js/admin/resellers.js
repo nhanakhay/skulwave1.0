@@ -16,7 +16,7 @@ async function loadResellers() {
           <label>Phone<input name="phone"></label>
           <label>Username<input name="username" required></label>
           <label>Password<input name="password" type="password" minlength="6" required></label>
-          <label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="0" required></label>
+          <label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="100" required></label>
           <button class="primary-button">Create reseller</button>
         </form>
       </div>

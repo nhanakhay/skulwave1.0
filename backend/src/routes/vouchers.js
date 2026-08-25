@@ -6,7 +6,7 @@ const router = express.Router();
 
 const DEFAULT_VOUCHER_PASSWORD = 'skulwave';
 
-function generateHotspotUsername(profileName = '', length = 10) {
+function generateHotspotUsername(profileName = '', length = 8) {
   const prefix = profileName
     .split(/[-\s]+/)
     .filter(Boolean)
@@ -20,7 +20,7 @@ function generateHotspotUsername(profileName = '', length = 10) {
   for (let i = 0; i < length; i += 1) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return `${safePrefix}-${result}`;
+  return `${safePrefix.toUpperCase()+result}`;
 }
 
 function resolveSharedPassword() {
@@ -146,8 +146,9 @@ router.post('/generate', async (req, res) => {
 // ─────────────────────────────────────────────
 async function redeemVoucher(req, res) {
   try {
-    const { hotspot_username } = req.body;
+    const { hotspot_username, vFullname, buyer_full_name } = req.body;
     const sharedPassword = resolveSharedPassword();
+    const buyerFullName = String(vFullname || buyer_full_name || '').trim();
 
     if (!hotspot_username) {
       return res.status(400).json({
@@ -229,11 +230,18 @@ async function redeemVoucher(req, res) {
         validUntil.toISOString(),
         voucher.id
       );
+      if (buyerFullName) {
+        await db.getPreparedStatement('updateVoucherBuyerFullName').run(buyerFullName, voucher.id);
+      }
       if (voucher.reseller_id) await db.runAsync('UPDATE reseller_sales SET redeemed_at=? WHERE voucher_id=?', [now.toISOString(), voucher.id]);
 
     } else {
       // Already active — use existing valid_until
       validUntil = new Date(voucher.valid_until);
+    }
+
+    if (buyerFullName) {
+      await db.getPreparedStatement('updateVoucherBuyerFullName').run(buyerFullName, voucher.id);
     }
 
     // ─────────────────────────────────────────
@@ -258,6 +266,7 @@ async function redeemVoucher(req, res) {
         id: voucher.id,
         username: hotspot_username,
         password: sharedPassword,
+        buyer_full_name: buyerFullName || voucher.buyer_full_name || null,
         package: pkg,
         valid_until: validUntil.toISOString(),
         status: 'active',
@@ -275,6 +284,7 @@ router.post('/redeem', async (req, res, next) => {
     'getVoucherByUsername',
     'getPackageById',
     'updateVoucherStatus',
+    'updateVoucherBuyerFullName',
     'updateVoucherValidUntil',
     'getActiveVoucherSession',
     'insertVoucherSession',
