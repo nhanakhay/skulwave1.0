@@ -22,17 +22,21 @@
         <h1>SkulWave Wifi</h1>
         <p class="lede">Sign in to pick up where you left off.</p>
 
-        <form onsubmit="return false;">
+        <form id="paymentAccountForm" onsubmit="return handlePaymentAccount(event)">
           <div class="field">
             <label for="si-email">Email</label>
-            <input id="si-email" type="email" autocomplete="email" placeholder="sample@gmail.com" required disabled>
+            <input id="si-email" name="email" type="email" autocomplete="email" placeholder="sample@gmail.com" required>
           </div>
-          
-          <div class="row-between">
-            <span>&nbsp;</span>
-            <a href="#">Forgot password?</a>
+          <div class="field">
+            <label for="si-password">Password</label>
+            <input id="si-password" name="password" type="password" autocomplete="current-password" required>
           </div>
-          <button class="submit" type="submit" disabled>Sign in</button>
+          <div class="field">
+            <label for="si-confirm-password">Confirm password <small>(first time only)</small></label>
+            <input id="si-confirm-password" name="confirm_password" type="password" autocomplete="new-password">
+          </div>
+          <button class="submit" id="paymentAccountButton" type="submit">Continue to packages</button>
+          <div id="paymentAccountLoading" class="loading-spinner"><div class="spinner"></div><p>Checking account…</p></div>
           <button class="packages-button" type="button" onclick="window.location.href='viewPackages.html'">View packages</button>
         </form>
 

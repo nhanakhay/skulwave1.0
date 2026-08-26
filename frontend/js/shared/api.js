@@ -9,7 +9,7 @@
       headers: { 'Content-Type': 'application/json', 'x-admin-key': localStorage.getItem('adminApiKey') || '', ...(options.headers || {}) },
     });
     const data = await response.json().catch(() => ({}));
-    if (response.status === 401) { localStorage.removeItem('adminApiKey'); location.replace('adminlogin.html'); }
+    if (response.status === 401) { localStorage.removeItem('adminApiKey'); localStorage.removeItem('adminRole'); location.replace('adminlogin.html'); }
     if (!response.ok) throw new Error(data.error || 'The request could not be completed.');
     return data;
   }

@@ -5,6 +5,20 @@ const query = new URLSearchParams(window.location.search);
 const routerLoginUrl = query.get('router-login');
 const originalDestination = query.get('dst');
 
+async function handlePaymentAccount(event) {
+    event.preventDefault();
+    const form = event.currentTarget, button = document.getElementById('paymentAccountButton'), loading = document.getElementById('paymentAccountLoading');
+    button.disabled = true; loading.style.display = 'block';
+    try {
+        const response = await fetch('/api/payment/account', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.fromEntries(new FormData(form))) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Unable to continue.');
+        sessionStorage.setItem('skulwaveAccountToken', data.account_token);
+        location.href = `packages.html?dst=${encodeURIComponent(originalDestination || '')}&router-login=${encodeURIComponent(routerLoginUrl || '')}`;
+    } catch (err) { alert(err.message); button.disabled = false; loading.style.display = 'none'; }
+    return false;
+}
+
 
 
 

@@ -5,10 +5,11 @@ async function loadResellers() {
   const c = document.getElementById('adminContent');
 
   const render = async () => {
-    const d = await adminApi.get('/resellers');
+    const selectedDate = new URLSearchParams(location.search).get('date') || new Date().toISOString().slice(0,10);
+    const d = await adminApi.get(`/resellers?date=${encodeURIComponent(selectedDate)}`);
     c.innerHTML = `
       <h2>Resellers</h2>
-      <p class="lede">Create accounts and manage sales balances.</p>
+      <p class="lede">Create accounts and manage sales balances.</p><label>Sales date <input id="salesDate" type="date" value="${selectedDate}"></label>
       <div class="panel form-card">
         <h3>Create reseller</h3>
         <form id="resellerForm" class="form-grid">
@@ -16,6 +17,7 @@ async function loadResellers() {
           <label>Phone<input name="phone"></label>
           <label>Username<input name="username" required></label>
           <label>Password<input name="password" type="password" minlength="6" required></label>
+          <label>Confirm password<input name="confirm_password" type="password" minlength="6" required></label>
           <label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="100" required></label>
           <button class="primary-button">Create reseller</button>
         </form>
@@ -62,6 +64,7 @@ async function loadResellers() {
         alert(error.message);
       }
     };
+    document.getElementById('salesDate').onchange=(e)=>location.search=`?date=${encodeURIComponent(e.target.value)}`;
 
     c.querySelectorAll('.toggle').forEach((button) => {
       button.onclick = async () => {

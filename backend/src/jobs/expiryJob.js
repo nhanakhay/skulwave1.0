@@ -35,9 +35,7 @@ async function expireVoucherSessions() {
     return;
   }
 
-  if (expiredSessions.length === 0) return;
-
-  console.log(`[expiryJob] Found ${expiredSessions.length} expired session(s) to process`);
+  if (expiredSessions.length) console.log(`[expiryJob] Found ${expiredSessions.length} expired voucher session(s) to process`);
 
   for (const session of expiredSessions) {
     try {
@@ -66,6 +64,18 @@ async function expireVoucherSessions() {
       // Log error but continue processing remaining sessions
       console.error(`[expiryJob] ✗ Failed to expire session ${session.id} (${session.hotspot_username}):`, err.message);
     }
+  }
+
+  // Paid accounts use the same RouterOS lifecycle, but have their own session
+  // records and individual data caps.
+  const paidSessions = await db.allAsync("SELECT s.*,u.hotspot_username FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.status='active' AND s.expires_at<=?", [now]);
+  for (const session of paidSessions) {
+    try {
+      await disconnectHotspotUser(session.hotspot_username);
+      await removeHotspotUser(session.hotspot_username);
+      await db.runAsync("UPDATE sessions SET status='expired',end_time=? WHERE id=?", [now, session.id]);
+      await db.runAsync("UPDATE users SET status='EXPIRED' WHERE id=?", [session.user_id]);
+    } catch (err) { console.error('[expiryJob] paid session expiry failed:', err.message); }
   }
 }
 

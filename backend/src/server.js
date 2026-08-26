@@ -8,6 +8,7 @@ const compression = require("compression");
 const voucherRoutes = require("./routes/vouchers");
 const adminRoutes = require("./routes/admin");
 const resellerRoutes = require('./routes/resellers');
+const paymentRoutes = require('./routes/payment');
 const { scheduleExpiryJob } = require("./jobs/expiryJob");
 const adminAuth = require('./middleware/adminAuth')
 
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from the frontend directory with caching
 app.use(express.static(path.join(__dirname, "../../frontend")));
+app.get('/payment/callback', (_req,res) => res.sendFile(path.join(__dirname, '../../frontend/payment/callback.html')));
 // app.use(express.static(path.join(__dirname, "../../frontend"), { maxAge: '1h' }));
 // API routes
 // app.use("/api/auth", authRoutes);
@@ -29,6 +31,7 @@ app.use(express.static(path.join(__dirname, "../../frontend")));
 console.log('[server] adminRoutes loaded?', !!adminRoutes, 'stack size', adminRoutes.stack ? adminRoutes.stack.length : 0);
 app.use("/api/admin", adminRoutes);
 app.use('/api/resellers', resellerRoutes);
+app.use('/api/payment', paymentRoutes);
 console.log('[server] app._router after admin mount?', !!app._router, 'stack size', app._router ? app._router.stack.length : 'none');
 // Protect voucher generation specifically
 app.use("/api/vouchers/generate", adminAuth);

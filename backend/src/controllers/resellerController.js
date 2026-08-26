@@ -91,7 +91,9 @@ exports.sell = async (req, res) => {
     const commission = round(
       (voucher.price * voucher.reseller_commission_percent) / 100,
     );
-    const share = round(voucher.price - commission);
+    // Commission is owed separately; it must never reduce the reseller's cash
+    // outstanding balance to SkulWave.
+    const share = round(voucher.price);
     const result = await db.runAsync(
       "UPDATE vouchers SET status='sold',sold_at=CURRENT_TIMESTAMP WHERE id=? AND status='generated'",
       [id],
