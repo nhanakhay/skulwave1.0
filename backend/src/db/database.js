@@ -61,6 +61,18 @@ CREATE TABLE IF NOT EXISTS users (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS admin_accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'SCHOOL_ADMIN',
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_login_at DATETIME
+);
+
 CREATE TABLE IF NOT EXISTS packages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -98,6 +110,7 @@ CREATE TABLE IF NOT EXISTS vouchers (
   redeemed_at DATETIME,
   reseller_id INTEGER,
   sold_at DATETIME,
+  buyer_full_name TEXT,
   FOREIGN KEY (package_id) REFERENCES packages(id)
 );
 
@@ -139,6 +152,8 @@ CREATE INDEX IF NOT EXISTS idx_voucher_sessions_status ON voucher_sessions(statu
 CREATE INDEX IF NOT EXISTS idx_voucher_sessions_expires_at ON voucher_sessions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+CREATE INDEX IF NOT EXISTS idx_transactions_reference ON transactions(paystack_reference);
+CREATE INDEX IF NOT EXISTS idx_reseller_sales_sold_at ON reseller_sales(sold_at);
 `;
 
 // ─────────────────────────────────────────────
@@ -187,11 +202,11 @@ function prepareStatements() {
   preparedStatements.getPackageById = prepareStatement(
     'SELECT * FROM packages WHERE id = ?'
   );
-  preparedStatements.getAdminUsers = prepareStatement(`SELECT v.id,v.hotspot_username AS username,p.name AS package_name,v.status,v.created_at,v.redeemed_at,v.valid_until FROM vouchers v LEFT JOIN packages p ON p.id=v.package_id ORDER BY v.created_at DESC`);
+  preparedStatements.getAdminUsers = prepareStatement(`SELECT v.id,v.hotspot_username AS username,p.name AS package_name,v.buyer_full_name,v.status,v.created_at,v.redeemed_at,v.valid_until FROM vouchers v LEFT JOIN packages p ON p.id=v.package_id ORDER BY v.created_at DESC`);
   preparedStatements.getAdminSessions = prepareStatement(`SELECT vs.id,vs.hotspot_username,p.name AS package_name,vs.start_time,vs.expires_at,vs.end_time,vs.status FROM voucher_sessions vs LEFT JOIN vouchers v ON v.id=vs.voucher_id LEFT JOIN packages p ON p.id=v.package_id ORDER BY vs.start_time DESC`);
   preparedStatements.getDashboardSummary = prepareStatement(`SELECT (SELECT COUNT(*) FROM vouchers) total_vouchers,(SELECT COUNT(*) FROM vouchers WHERE status IN ('active','redeemed')) active_vouchers,(SELECT COUNT(*) FROM voucher_sessions WHERE status='active') active_sessions,(SELECT COUNT(*) FROM vouchers WHERE status IN ('unused','generated')) unused_vouchers,(SELECT COALESCE(SUM(student_price),0) FROM reseller_sales) cash_revenue,(SELECT COALESCE(SUM(reseller_commission),0) FROM reseller_sales) reseller_commission,(SELECT COALESCE(SUM(amount),0) FROM transactions WHERE status='success') payment_revenue`);
   preparedStatements.getPackageAnalytics = prepareStatement(`SELECT p.name,p.speed,p.price,COUNT(v.id) vouchers_issued,SUM(CASE WHEN v.status IN ('active','redeemed') THEN 1 ELSE 0 END) active_vouchers FROM packages p LEFT JOIN vouchers v ON v.package_id=p.id GROUP BY p.id ORDER BY vouchers_issued DESC,p.id`);
-  preparedStatements.getRecentVouchers = prepareStatement(`SELECT v.hotspot_username,p.name AS package_name,v.status,v.created_at FROM vouchers v LEFT JOIN packages p ON p.id=v.package_id ORDER BY v.created_at DESC LIMIT ?`);
+  preparedStatements.getRecentVouchers = prepareStatement(`SELECT v.hotspot_username,p.name AS package_name,v.buyer_full_name,v.status,v.created_at FROM vouchers v LEFT JOIN packages p ON p.id=v.package_id ORDER BY v.created_at DESC LIMIT ?`);
   preparedStatements.getRevenueTransactions = prepareStatement(`SELECT t.id,u.username,p.name AS package_name,t.amount,t.paystack_reference,t.status,t.created_at FROM transactions t LEFT JOIN users u ON u.id=t.user_id LEFT JOIN packages p ON p.id=t.package_id ORDER BY t.created_at DESC`);
 
   // ── Transactions ───────────────────────────
@@ -233,7 +248,8 @@ function prepareStatements() {
       v.status,
       v.created_by,
       v.created_at,
-      v.redeemed_at
+      v.redeemed_at,
+      v.buyer_full_name
     FROM vouchers v
     LEFT JOIN packages p ON v.package_id = p.id
     ORDER BY v.created_at DESC`
@@ -242,6 +258,9 @@ function prepareStatements() {
   // Update voucher status and redeemed_at timestamp
   preparedStatements.updateVoucherStatus = prepareStatement(
     'UPDATE vouchers SET status = ?, redeemed_at = ? WHERE id = ?'
+  );
+  preparedStatements.updateVoucherBuyerFullName = prepareStatement(
+    'UPDATE vouchers SET buyer_full_name = ? WHERE id = ? AND (COALESCE(buyer_full_name, "") = "")'
   );
 
   // CHANGED: Set valid_until at first redeem (wall clock expiry from first auth)
@@ -371,7 +390,7 @@ function initializeDatabase(callback) {
           return;
         }
 
-        const migrations=['ALTER TABLE packages ADD COLUMN reseller_enabled INTEGER NOT NULL DEFAULT 1','ALTER TABLE packages ADD COLUMN reseller_commission_percent REAL NOT NULL DEFAULT 1','ALTER TABLE vouchers ADD COLUMN reseller_id INTEGER','ALTER TABLE vouchers ADD COLUMN sold_at DATETIME','ALTER TABLE resellers ADD COLUMN credit_balance REAL NOT NULL DEFAULT 0']; let migrationIndex=0;
+        const migrations=['ALTER TABLE packages ADD COLUMN reseller_enabled INTEGER NOT NULL DEFAULT 1','ALTER TABLE packages ADD COLUMN reseller_commission_percent REAL NOT NULL DEFAULT 1','ALTER TABLE vouchers ADD COLUMN reseller_id INTEGER','ALTER TABLE vouchers ADD COLUMN sold_at DATETIME','ALTER TABLE vouchers ADD COLUMN buyer_full_name TEXT','ALTER TABLE resellers ADD COLUMN credit_balance REAL NOT NULL DEFAULT 0','ALTER TABLE users ADD COLUMN email TEXT','ALTER TABLE users ADD COLUMN hotspot_username TEXT','ALTER TABLE users ADD COLUMN hotspot_password_hash TEXT','ALTER TABLE users ADD COLUMN active_package_id INTEGER','ALTER TABLE users ADD COLUMN package_expires_at DATETIME','ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT \'INACTIVE\'','ALTER TABLE transactions ADD COLUMN paid_at DATETIME','ALTER TABLE transactions ADD COLUMN payment_channel TEXT','ALTER TABLE transactions ADD COLUMN access_granted_at DATETIME','ALTER TABLE sessions ADD COLUMN hotspot_username TEXT','ALTER TABLE sessions ADD COLUMN expires_at DATETIME']; let migrationIndex=0;
         const migrate=()=>{ if(migrationIndex<migrations.length) return db.run(migrations[migrationIndex++],migrate); prepareStatements();
         seedPackages((seedErr) => {
           if (seedErr) {

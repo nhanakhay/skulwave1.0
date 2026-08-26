@@ -22,23 +22,23 @@
         <h1>SkulWave Wifi</h1>
         <p class="lede">Sign in to pick up where you left off.</p>
 
-        <form onsubmit="return false;">
+        <form id="paymentAccountForm" onsubmit="return handlePaymentAccount(event)">
           <div class="field">
             <label for="si-email">Email</label>
-            <input id="si-email" type="email" autocomplete="email" placeholder="sample@gmail.com" required disabled>
+            <input id="si-email" name="email" type="email" autocomplete="email" placeholder="sample@gmail.com" required>
           </div>
-          
-          <div class="row-between">
-            <span>&nbsp;</span>
-            <a href="#">Forgot password?</a>
+          <div class="field">
+            <label for="si-password">Password</label>
+            <input id="si-password" name="password" type="password" autocomplete="current-password" required>
           </div>
-          <button class="submit" type="submit" disabled>Sign in</button>
-          <button class="packages-button" type="button" onclick="window.location.href='viewPackages.html'">View packages</button>
+          <button class="submit" id="paymentAccountButton" type="submit">Sign In</button>
+          <div id="paymentAccountLoading" class="loading-spinner"><div class="spinner"></div><p>Checking account…</p></div>
+          <div class="row-between" style="margin-top:18px"><span>New to SkulWave?</span><a href="signup.html">Create an account</a></div>
         </form>
 
         <div class="switch-mobile">
-          New here?
-          <button type="button" onclick="setMode(true)">Create an account</button>
+          Having a Voucher?
+          <button type="button" onclick="setMode(true)">Enter Voucher</button>
         </div>
       </div>
     </div>
@@ -53,11 +53,11 @@
         <form id="voucherForm" onsubmit="return handleLogin(event)">
           <div class="field">
             <label for="su-username"> Name</label>
-            <input id="vFullname" type="text" autocomplete="name" placeholder="Nana Ama" required>
+            <input id="vFullname" type="text" autocomplete="name" placeholder="Theo Kofi" required>
           </div>
           <div class="field">
             <label for="su-voucher">Voucher</label>
-            <input id="vUsername" type="text" autocomplete="voucher" placeholder="01-35343-1" required>
+            <input id="vUsername" type="text" autocomplete="voucher" placeholder="BD3548234500" required>
           </div>
           
           <button class="submit" id="vLoginBtn" type="submit">Connect</button>
@@ -111,6 +111,7 @@
             <h2>Start something<br>new today.</h2>
             <p>Set up an account in moments and get full access to your dashboard.</p>
             <button class="ghost-btn" onclick="setMode(true)">Voucher Code</button>
+            <button class="ghost-btn" type="button" onclick="window.location.href='viewPackages.html'">View packages</button>
             <div class="stamp">POWERED BY SKULWAVE</div>
           </div>
         </div>

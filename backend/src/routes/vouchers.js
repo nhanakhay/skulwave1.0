@@ -1,26 +1,26 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const db = require('../db/database');
-const { addHotspotUser } = require('../mikrotik/mikrotik');
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const db = require("../db/database");
+const { addHotspotUser } = require("../mikrotik/mikrotik");
 const router = express.Router();
 
-const DEFAULT_VOUCHER_PASSWORD = 'skulwave';
+const DEFAULT_VOUCHER_PASSWORD = "skulwave";
 
-function generateHotspotUsername(profileName = '', length = 10) {
+function generateHotspotUsername(profileName = "", length = 8) {
   const prefix = profileName
     .split(/[-\s]+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((word) => word.charAt(0).toLowerCase())
-    .join('');
+    .join("");
 
-  const safePrefix = prefix || 'vu';
-  const chars = '0123456789';
-  let result = '';
+  const safePrefix = prefix || "vu";
+  const chars = "0123456789";
+  let result = "";
   for (let i = 0; i < length; i += 1) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return `${safePrefix}-${result}`;
+  return `${safePrefix.toUpperCase() + result}`;
 }
 
 function resolveSharedPassword() {
@@ -32,27 +32,53 @@ function resolveSharedPassword() {
 // Must match exactly what's configured on the RB5009
 // ─────────────────────────────────────────────
 const PROFILE_MAP = {
-  1:  'research-daily',
-  2:  'research-weekly',
-  3:  'research-monthly',
-  4:  'basic-daily',
-  5:  'basic-weekly',
-  6:  'basic-monthly',
-  7:  'premium-daily',
-  8:  'premium-weekly',
-  9:  'premium-monthly',
-  10: 'vip-daily',
-  11: 'vip-weekly',
-  12: 'vip-monthly',
+  1: "research-daily",
+  2: "research-weekly",
+  3: "research-monthly",
+  4: "basic-daily",
+  5: "basic-weekly",
+  6: "basic-monthly",
+  7: "premium-daily",
+  8: "premium-weekly",
+  9: "premium-monthly",
+  10: "vip-daily",
+  11: "vip-weekly",
+  12: "vip-monthly",
 };
 
-async function generateVoucher({ packageId, createdBy = 'admin', resellerId = null, status = 'unused' }) {
-  const pkg = await db.getPreparedStatement('getPackageById').get(packageId);
-  if (!pkg || !PROFILE_MAP[packageId]) throw new Error('Invalid package');
-  let username; do { username = generateHotspotUsername(PROFILE_MAP[packageId]); } while (await db.getPreparedStatement('getVoucherByUsername').get(username));
+async function generateVoucher({
+  packageId,
+  createdBy = "admin",
+  resellerId = null,
+  status = "unused",
+}) {
+  const pkg = await db.getPreparedStatement("getPackageById").get(packageId);
+  if (!pkg || !PROFILE_MAP[packageId]) throw new Error("Invalid package");
+  let username;
+  do {
+    username = generateHotspotUsername(PROFILE_MAP[packageId]);
+  } while (await db.getPreparedStatement("getVoucherByUsername").get(username));
   const password = resolveSharedPassword();
-  const result = await db.getPreparedStatement('insertVoucher').run(username, await bcrypt.hash(password, 8), packageId, null, status, createdBy, resellerId);
-  return { id: result.lastID, hotspot_username: username, package_id: packageId, package_name: pkg.name, status, shared_password: password, price: pkg.price };
+  const result = await db
+    .getPreparedStatement("insertVoucher")
+    .run(
+      username,
+      await bcrypt.hash(password, 8),
+      packageId,
+      null,
+      status,
+      createdBy,
+      resellerId,
+    );
+  return {
+    id: result.lastID,
+    hotspot_username: username,
+    package_id: packageId,
+    package_name: pkg.name,
+    status,
+    shared_password: password,
+    price: pkg.price,
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -61,43 +87,52 @@ async function generateVoucher({ packageId, createdBy = 'admin', resellerId = nu
 // MikroTik user is NOT created yet.
 // valid_until is set at first redeem (first auth).
 // ─────────────────────────────────────────────
-router.post('/generate', async (req, res) => {
+router.post("/generate", async (req, res) => {
   try {
     // Ensure DB prepared statements are ready
-    const getPkgStmt = db.getPreparedStatement && db.getPreparedStatement('getPackageById');
-    const getVoucherStmt = db.getPreparedStatement && db.getPreparedStatement('getVoucherByUsername');
-    const insertVoucherStmt = db.getPreparedStatement && db.getPreparedStatement('insertVoucher');
+    const getPkgStmt =
+      db.getPreparedStatement && db.getPreparedStatement("getPackageById");
+    const getVoucherStmt =
+      db.getPreparedStatement &&
+      db.getPreparedStatement("getVoucherByUsername");
+    const insertVoucherStmt =
+      db.getPreparedStatement && db.getPreparedStatement("insertVoucher");
 
     if (!getPkgStmt || !getVoucherStmt || !insertVoucherStmt) {
-      return res.status(503).json({ error: 'Database not ready. Try again shortly.' });
+      return res
+        .status(503)
+        .json({ error: "Database not ready. Try again shortly." });
     }
 
-    const {
-      package_id,
-      created_by = 'admin',
-    } = req.body;
+    const { package_id, created_by = "admin" } = req.body;
 
     if (!package_id) {
       return res.status(400).json({
-        error: 'package_id is required',
+        error: "package_id is required",
       });
     }
 
     const pkg = await getPkgStmt.get(package_id);
     if (!pkg) {
-      return res.status(400).json({ error: 'Invalid package_id' });
+      return res.status(400).json({ error: "Invalid package_id" });
     }
 
     const profile = PROFILE_MAP[package_id];
     if (!profile) {
-      return res.status(400).json({ error: 'No MikroTik profile mapped for this package' });
+      return res
+        .status(400)
+        .json({ error: "No MikroTik profile mapped for this package" });
     }
 
     const sharedPassword = resolveSharedPassword();
     const hotspot_username = generateHotspotUsername(profile);
     const existing = await getVoucherStmt.get(hotspot_username);
     if (existing) {
-      return res.status(400).json({ error: 'Generated hotspot username already exists. Please try again.' });
+      return res
+        .status(400)
+        .json({
+          error: "Generated hotspot voucher already exists. Please try again.",
+        });
     }
 
     // Hash password — cost factor 8 for Pi 3B+ performance
@@ -110,13 +145,13 @@ router.post('/generate', async (req, res) => {
       hashedPassword,
       package_id,
       null, // valid_until — set at first auth
-      'unused', // status — not yet redeemed
+      "unused", // status — not yet redeemed
       created_by,
-      null
+      null,
     );
 
     res.json({
-      message: 'Voucher generated successfully',
+      message: "Voucher generated successfully",
       voucher: {
         id: result.lastID,
         hotspot_username,
@@ -124,17 +159,18 @@ router.post('/generate', async (req, res) => {
         package_name: pkg.name,
         profile,
         valid_until: null,
-        status: 'unused',
+        status: "unused",
         created_by,
         shared_password: sharedPassword,
       },
     });
   } catch (err) {
-    console.error('[voucher/generate]', err && err.message ? err.message : err);
-    res.status(500).json({ error: err.message || 'Unable to generate voucher' });
+    console.error("[voucher/generate]", err && err.message ? err.message : err);
+    res
+      .status(500)
+      .json({ error: err.message || "Unable to generate voucher" });
   }
 });
-
 
 // ─────────────────────────────────────────────
 // POST /api/vouchers/redeem
@@ -146,60 +182,77 @@ router.post('/generate', async (req, res) => {
 // ─────────────────────────────────────────────
 async function redeemVoucher(req, res) {
   try {
-    const { hotspot_username } = req.body;
+    const { hotspot_username, vFullname, buyer_full_name } = req.body;
     const sharedPassword = resolveSharedPassword();
+    const buyerFullName = String(vFullname || buyer_full_name || "").trim();
 
     if (!hotspot_username) {
       return res.status(400).json({
-        error: 'hotspot_username is required',
+        error: "hotspot_username is required",
       });
     }
 
     // Look up voucher
-    const voucher = await db.getPreparedStatement('getVoucherByUsername').get(hotspot_username);
+    const voucher = await db
+      .getPreparedStatement("getVoucherByUsername")
+      .get(hotspot_username);
     if (!voucher) {
-      return res.status(404).json({ error: 'Voucher not found' });
+      return res.status(404).json({ error: "Voucher not found" });
     }
 
     // Only unused or active vouchers can be redeemed
-    if (voucher.status === 'expired') {
-      return res.status(400).json({ error: 'Voucher has expired' });
+    if (voucher.status === "expired") {
+      return res.status(400).json({ error: "Voucher has expired" });
     }
-    if (voucher.status === 'generated') return res.status(400).json({ error: 'Voucher must be marked sold before redemption' });
+    if (voucher.status === "generated")
+      return res
+        .status(400)
+        .json({ error: "Voucher must be marked sold before redemption" });
 
     // If already active, check if still valid
-    if (voucher.status === 'active') {
+    if (voucher.status === "active") {
       const now = new Date();
       const validUntil = new Date(voucher.valid_until);
       if (validUntil <= now) {
-        return res.status(400).json({ error: 'Voucher has expired' });
+        return res.status(400).json({ error: "Voucher has expired" });
       }
     }
 
     // Validate password against stored hash
-    const match = await bcrypt.compare(sharedPassword, voucher.hotspot_password);
+    const match = await bcrypt.compare(
+      sharedPassword,
+      voucher.hotspot_password,
+    );
     if (!match) {
-      return res.status(401).json({ error: 'Invalid username or password' });
+      return res.status(401).json({ error: "Invalid username or password" });
     }
 
     // Get package details for duration and profile
-    const pkg = await db.getPreparedStatement('getPackageById').get(voucher.package_id);
+    const pkg = await db
+      .getPreparedStatement("getPackageById")
+      .get(voucher.package_id);
     if (!pkg) {
-      return res.status(500).json({ error: 'Package not found for this voucher' });
+      return res
+        .status(500)
+        .json({ error: "Package not found for this voucher" });
     }
 
     const profile = PROFILE_MAP[voucher.package_id];
     if (!profile) {
-      return res.status(500).json({ error: 'No MikroTik profile mapped for this package' });
+      return res
+        .status(500)
+        .json({ error: "No MikroTik profile mapped for this package" });
     }
 
     const now = new Date();
     let validUntil;
     let isFirstRedeem = false;
 
-    if (voucher.status === 'unused' || voucher.status === 'sold') {
+    if (voucher.status === "unused" || voucher.status === "sold") {
       isFirstRedeem = true;
-      validUntil = new Date(now.getTime() + pkg.duration_days * 24 * 60 * 60 * 1000);
+      validUntil = new Date(
+        now.getTime() + pkg.duration_days * 24 * 60 * 60 * 1000,
+      );
 
       // ─────────────────────────────────────────
       // Step 1 — Try MikroTik FIRST
@@ -207,11 +260,24 @@ async function redeemVoucher(req, res) {
       // Voucher stays 'unused' and can be retried
       // ─────────────────────────────────────────
       try {
-        await addHotspotUser(hotspot_username, sharedPassword, profile);
+        // Speed comes from the profile, while each voucher gets its own total
+        // data cap. RouterOS disconnects the user when this total is reached.
+        await addHotspotUser(
+          hotspot_username,
+          sharedPassword,
+          profile,
+          pkg.data_cap_bytes,
+        );
       } catch (mikrotikErr) {
-        console.error('[voucher/redeem] MikroTik error:', mikrotikErr && mikrotikErr.message ? mikrotikErr.message : mikrotikErr);
+        console.error(
+          "[voucher/redeem] MikroTik error:",
+          mikrotikErr && mikrotikErr.message
+            ? mikrotikErr.message
+            : mikrotikErr,
+        );
         return res.status(500).json({
-          error: 'Failed to activate on router. Please verify the MikroTik connection and try again.',
+          error:
+            "Failed to activate on router. Please verify the MikroTik connection and try again.",
         });
       }
 
@@ -219,21 +285,36 @@ async function redeemVoucher(req, res) {
       // Step 2 — MikroTik confirmed success
       // Now safe to update SQLite
       // ─────────────────────────────────────────
-      await db.getPreparedStatement('updateVoucherStatus').run(
-        voucher.reseller_id ? 'redeemed' : 'active',
-        now.toISOString(),
-        voucher.id
-      );
+      await db
+        .getPreparedStatement("updateVoucherStatus")
+        .run(
+          voucher.reseller_id ? "redeemed" : "active",
+          now.toISOString(),
+          voucher.id,
+        );
 
-      await db.getPreparedStatement('updateVoucherValidUntil').run(
-        validUntil.toISOString(),
-        voucher.id
-      );
-      if (voucher.reseller_id) await db.runAsync('UPDATE reseller_sales SET redeemed_at=? WHERE voucher_id=?', [now.toISOString(), voucher.id]);
-
+      await db
+        .getPreparedStatement("updateVoucherValidUntil")
+        .run(validUntil.toISOString(), voucher.id);
+      if (buyerFullName) {
+        await db
+          .getPreparedStatement("updateVoucherBuyerFullName")
+          .run(buyerFullName, voucher.id);
+      }
+      if (voucher.reseller_id)
+        await db.runAsync(
+          "UPDATE reseller_sales SET redeemed_at=? WHERE voucher_id=?",
+          [now.toISOString(), voucher.id],
+        );
     } else {
       // Already active — use existing valid_until
       validUntil = new Date(voucher.valid_until);
+    }
+
+    if (buyerFullName) {
+      await db
+        .getPreparedStatement("updateVoucherBuyerFullName")
+        .run(buyerFullName, voucher.id);
     }
 
     // ─────────────────────────────────────────
@@ -242,80 +323,92 @@ async function redeemVoucher(req, res) {
     // Prevents duplicate sessions when a student
     // logs in multiple times on the same voucher.
     // ─────────────────────────────────────────
-    const existingSession = await db.getPreparedStatement('getActiveVoucherSession').get(voucher.id);
+    const existingSession = await db
+      .getPreparedStatement("getActiveVoucherSession")
+      .get(voucher.id);
     if (!existingSession) {
-      await db.getPreparedStatement('insertVoucherSession').run(
-        voucher.id,
-        hotspot_username,
-        validUntil.toISOString(),
-        'active'
-      );
+      await db
+        .getPreparedStatement("insertVoucherSession")
+        .run(voucher.id, hotspot_username, validUntil.toISOString(), "active");
     }
 
     res.json({
-      message: isFirstRedeem ? 'Voucher redeemed successfully' : 'Login successful',
+      message: isFirstRedeem
+        ? "Voucher redeemed successfully"
+        : "Login successful",
       voucher: {
         id: voucher.id,
         username: hotspot_username,
         password: sharedPassword,
+        buyer_full_name: buyerFullName || voucher.buyer_full_name || null,
         package: pkg,
         valid_until: validUntil.toISOString(),
-        status: 'active',
+        status: "active",
       },
     });
   } catch (err) {
-    console.error('[voucher/redeem]', err);
-    res.status(500).json({ error: err.message || 'Unable to redeem voucher' });
+    console.error("[voucher/redeem]", err);
+    res.status(500).json({ error: err.message || "Unable to redeem voucher" });
   }
 }
 
 // Ensure required DB statements exist before running redeem
-router.post('/redeem', async (req, res, next) => {
+router.post("/redeem", async (req, res, next) => {
   const required = [
-    'getVoucherByUsername',
-    'getPackageById',
-    'updateVoucherStatus',
-    'updateVoucherValidUntil',
-    'getActiveVoucherSession',
-    'insertVoucherSession',
+    "getVoucherByUsername",
+    "getPackageById",
+    "updateVoucherStatus",
+    "updateVoucherBuyerFullName",
+    "updateVoucherValidUntil",
+    "getActiveVoucherSession",
+    "insertVoucherSession",
   ];
-  const missing = required.filter((name) => !(db.getPreparedStatement && db.getPreparedStatement(name)));
-  if (missing.length) return res.status(503).json({ error: 'Database not ready', missing });
+  const missing = required.filter(
+    (name) => !(db.getPreparedStatement && db.getPreparedStatement(name)),
+  );
+  if (missing.length)
+    return res.status(503).json({ error: "Database not ready", missing });
   return redeemVoucher(req, res, next);
 });
-
 
 // ─────────────────────────────────────────────
 // GET /api/vouchers
 // List all vouchers — admin use
 // ─────────────────────────────────────────────
-router.get('/', async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const vouchers = await db.getPreparedStatement('getAllVouchers').all();
+    const vouchers = await db.getPreparedStatement("getAllVouchers").all();
     res.json({ vouchers });
   } catch (err) {
-    console.error('[voucher/list]', err);
-    res.status(500).json({ error: err.message || 'Unable to fetch vouchers' });
+    console.error("[voucher/list]", err);
+    res.status(500).json({ error: err.message || "Unable to fetch vouchers" });
   }
 });
-
 
 // ─────────────────────────────────────────────
 // GET /api/vouchers/:username
 // Check a single voucher status — admin use
 // ─────────────────────────────────────────────
-router.get('/:username', async (req, res) => {
+router.get("/:username", async (req, res) => {
   try {
-    const voucher = await db.getPreparedStatement('getVoucherByUsername').get(req.params.username);
+    const voucher = await db
+      .getPreparedStatement("getVoucherByUsername")
+      .get(req.params.username);
     if (!voucher) {
-      return res.status(404).json({ error: 'Voucher not found' });
+      return res.status(404).json({ error: "Voucher not found" });
     }
 
-    const pkg = await db.getPreparedStatement('getPackageById').get(voucher.package_id);
+    const pkg = await db
+      .getPreparedStatement("getPackageById")
+      .get(voucher.package_id);
     const now = new Date();
-    const validUntil = voucher.valid_until ? new Date(voucher.valid_until) : null;
+    const validUntil = voucher.valid_until
+      ? new Date(voucher.valid_until)
+      : null;
     const remainingMs = validUntil ? Math.max(0, validUntil - now) : null;
-    const remainingHours = remainingMs ? (remainingMs / (1000 * 60 * 60)).toFixed(1) : null;
+    const remainingHours = remainingMs
+      ? (remainingMs / (1000 * 60 * 60)).toFixed(1)
+      : null;
 
     res.json({
       voucher: {
@@ -325,11 +418,10 @@ router.get('/:username', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('[voucher/status]', err);
-    res.status(500).json({ error: err.message || 'Unable to fetch voucher' });
+    console.error("[voucher/status]", err);
+    res.status(500).json({ error: err.message || "Unable to fetch voucher" });
   }
 });
-
 
 // Expose the handler so other routes (eg. POST /login) can reuse the same logic
 router.redeemVoucher = redeemVoucher;

@@ -1,5 +1,8 @@
-const db = require('../db/database');
-const { removeHotspotUser, disconnectHotspotUser } = require('../mikrotik/mikrotik');
+const db = require("../db/database");
+const {
+  removeHotspotUser,
+  disconnectHotspotUser,
+} = require("../mikrotik/mikrotik");
 
 // ─────────────────────────────────────────────
 // Expiry Job
@@ -17,27 +20,38 @@ async function expireVoucherSessions() {
   try {
     await db.waitForReady();
   } catch (err) {
-    console.error('[expiryJob] Database initialization failed:', err.message || err);
+    console.error(
+      "[expiryJob] Database initialization failed:",
+      err.message || err,
+    );
     return;
   }
 
   let expiredSessions;
-  const stmt = db.getPreparedStatement && db.getPreparedStatement('getExpiredVoucherSessions');
-  if (!stmt || typeof stmt.all !== 'function') {
-    console.warn('[expiryJob] Prepared statement is not available yet — skipping expiry check');
+  const stmt =
+    db.getPreparedStatement &&
+    db.getPreparedStatement("getExpiredVoucherSessions");
+  if (!stmt || typeof stmt.all !== "function") {
+    console.warn(
+      "[expiryJob] Prepared statement is not available yet — skipping expiry check",
+    );
     return;
   }
 
   try {
     expiredSessions = await stmt.all(now);
   } catch (err) {
-    console.error('[expiryJob] Failed to fetch expired sessions:', err.message || err);
+    console.error(
+      "[expiryJob] Failed to fetch expired sessions:",
+      err.message || err,
+    );
     return;
   }
 
-  if (expiredSessions.length === 0) return;
-
-  console.log(`[expiryJob] Found ${expiredSessions.length} expired session(s) to process`);
+  if (expiredSessions.length)
+    console.log(
+      `[expiryJob] Found ${expiredSessions.length} expired voucher session(s) to process`,
+    );
 
   for (const session of expiredSessions) {
     try {
@@ -48,23 +62,46 @@ async function expireVoucherSessions() {
       await removeHotspotUser(session.hotspot_username);
 
       // Step 3 — Mark session as expired in SQLite
-      await db.getPreparedStatement('expireVoucherSession').run(
-        'expired',
-        now,
-        session.id
-      );
+      await db
+        .getPreparedStatement("expireVoucherSession")
+        .run("expired", now, session.id);
 
       // Step 4 — Mark voucher itself as expired in SQLite
-      await db.getPreparedStatement('updateVoucherStatus').run(
-        'expired',
-        now,
-        session.voucher_id
-      );
+      await db
+        .getPreparedStatement("updateVoucherStatus")
+        .run("expired", now, session.voucher_id);
 
-      console.log(`[expiryJob] ✓ Expired session ${session.id} — removed user: ${session.hotspot_username}`);
+      console.log(
+        `[expiryJob] ✓ Expired session ${session.id} — removed user: ${session.hotspot_username}`,
+      );
     } catch (err) {
       // Log error but continue processing remaining sessions
-      console.error(`[expiryJob] ✗ Failed to expire session ${session.id} (${session.hotspot_username}):`, err.message);
+      console.error(
+        `[expiryJob] ✗ Failed to expire session ${session.id} (${session.hotspot_username}):`,
+        err.message,
+      );
+    }
+  }
+
+  // Paid accounts use the same RouterOS lifecycle, but have their own session
+  // records and individual data caps.
+  const paidSessions = await db.allAsync(
+    "SELECT s.*,u.hotspot_username FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.status='active' AND s.expires_at<=?",
+    [now],
+  );
+  for (const session of paidSessions) {
+    try {
+      await disconnectHotspotUser(session.hotspot_username);
+      await removeHotspotUser(session.hotspot_username);
+      await db.runAsync(
+        "UPDATE sessions SET status='expired',end_time=? WHERE id=?",
+        [now, session.id],
+      );
+      await db.runAsync("UPDATE users SET status='EXPIRED' WHERE id=?", [
+        session.user_id,
+      ]);
+    } catch (err) {
+      console.error("[expiryJob] paid session expiry failed:", err.message);
     }
   }
 }
@@ -76,11 +113,13 @@ async function expireVoucherSessions() {
 // for 30 second checks
 // ─────────────────────────────────────────────
 function scheduleExpiryJob(intervalSeconds = 60) {
-  console.log(`[expiryJob] Scheduled — checking every ${intervalSeconds} seconds`);
+  console.log(
+    `[expiryJob] Scheduled — checking every ${intervalSeconds} seconds`,
+  );
 
   const runExpiryCheck = () => {
     expireVoucherSessions().catch((err) => {
-      console.error('[expiryJob] Unhandled error:', err.message || err);
+      console.error("[expiryJob] Unhandled error:", err.message || err);
     });
   };
 

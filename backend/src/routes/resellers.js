@@ -1,7 +1,9 @@
 const router = require("express").Router();
 const c = require("../controllers/resellerController");
 const auth = require("../middleware/resellerAuth");
-router.post("/login", c.login);router.post('/logout', auth, (req, res) => res.json({ message: 'Logged out' }));router.use(auth);
+router.post("/login", c.login);
+router.post("/logout", auth, (req, res) => res.json({ message: "Logged out" }));
+router.use(auth);
 router.get("/me", c.me);
 router.get("/dashboard", c.dashboard);
 router.get("/packages", c.packages);

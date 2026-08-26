@@ -1,26 +1,5 @@
-
-function togglePlan(button) {
-    // Close other open plans
-    const allButtons = document.querySelectorAll('.plan-button');
-    const allPackages = document.querySelectorAll('.packages');
-
-    allButtons.forEach(btn => {
-        if (btn !== button) {
-            btn.classList.remove('active');
-        }
-    });
-
-    allPackages.forEach(pkg => {
-        if (pkg.previousElementSibling !== button) {
-            pkg.classList.remove('active');
-        }
-    });
-
-    // Toggle current plan
-    button.classList.toggle('active');
-    button.nextElementSibling.classList.toggle('active');
-}
-
-async function selectPackage(plan, package_type) {
-    alert('Voucher payments are disabled for now. Please contact an administrator to generate a voucher.');
-}
+const money=v=>new Intl.NumberFormat('en-GH',{style:'currency',currency:'GHS'}).format(v||0);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function selectPackage(id){const token=sessionStorage.getItem('skulwaveAccountToken');if(!token){location.href='login.html';return;}try{const q=new URLSearchParams(location.search),r=await fetch('/api/payment/initialize',{method:'POST',headers:{'Content-Type':'application/json','x-account-token':token},body:JSON.stringify({package_id:id,dst:q.get('dst')||'',router_login:q.get('router-login')||''})}),d=await r.json();if(!r.ok)throw new Error(d.error||'Unable to start payment.');location.href=d.authorization_url;}catch(e){alert(e.message);}}
+async function loadPackages(){const list=document.getElementById('packageList');try{const r=await fetch('/api/payment/packages'),d=await r.json();list.innerHTML=`<div class="table-scroll"><table><thead><tr><th>Package</th><th>Speed</th><th>Data</th><th>Duration</th><th>Price</th><th></th></tr></thead><tbody>${d.packages.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.speed)}</td><td>${esc(p.data_cap)}</td><td>${p.duration_days} day${p.duration_days===1?'':'s'}</td><td>${money(p.price)}</td><td><button class="voucher-button buy" data-id="${p.id}">Pay with MoMo</button></td></tr>`).join('')}</tbody></table></div>`;list.querySelectorAll('.buy').forEach(b=>b.onclick=()=>selectPackage(b.dataset.id));}catch(e){list.innerHTML=`<p>${esc(e.message)}</p>`;}}
+loadPackages();

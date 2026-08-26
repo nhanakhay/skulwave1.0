@@ -113,7 +113,7 @@ const pool = new MikroTikConnectionPool(3);
 // Pi handles expiry tracking via valid_until in SQLite
 // MikroTik only enforces speed via the profile
 // ─────────────────────────────────────────────
-async function addHotspotUser(username, password, profile = 'default') {
+async function addHotspotUser(username, password, profile = 'default', dataCapBytes = 0, limitUptime = '') {
   const conn = await pool.getConnection();
   try {
     const params = [
@@ -121,6 +121,10 @@ async function addHotspotUser(username, password, profile = 'default') {
       `=password=${password}`,
       `=profile=${profile}`,
     ];
+    // RouterOS applies byte limits to an individual hotspot user.  Profiles are
+    // deliberately only used for speed/traffic shaping.
+    if (Number(dataCapBytes) > 0) params.push(`=limit-bytes-total=${Math.floor(Number(dataCapBytes))}`);
+    if (limitUptime) params.push(`=limit-uptime=${limitUptime}`);
     const result = await conn.write('/ip/hotspot/user/add', params).catch((err) => {
       if (err && err.message && err.message.includes('UNKNOWNREPLY')) {
         return [];
