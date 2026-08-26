@@ -27,6 +27,18 @@ async function loadResellerDetail() {
     content.innerHTML = `
       <div class="panel-actions" style="margin-bottom:20px">
         <button class="primary-button" id="backButton">Back to resellers</button>
+        <button class="primary-button" id="editResellerButton" type="button">Edit reseller</button>
+      </div>
+      <div class="panel form-card" id="editResellerPanel" style="margin-bottom:20px;display:none">
+        <h3>Edit reseller</h3>
+        <form id="editResellerForm" class="form-grid">
+          <label>Name<input name="name" value="${esc(reseller.name)}" required></label>
+          <label>Username<input name="username" value="${esc(reseller.username)}" required></label>
+          <label>Phone<input name="phone" value="${esc(reseller.phone || '')}"></label>
+          <label>New password <small>(leave empty to keep)</small><input name="password" type="password" minlength="6"></label>
+          <label>Confirm new password<input name="confirm_password" type="password" minlength="6"></label>
+          <button class="primary-button">Save changes</button>
+        </form>
       </div>
       <div class="panel form-card">
         <h2>${esc(reseller.name)} (${esc(reseller.username)})</h2>
@@ -117,6 +129,25 @@ async function loadResellerDetail() {
 
     document.getElementById('backButton').onclick = () => {
       location.href = 'resellers.html';
+    };
+    document.getElementById('editResellerButton').onclick = () => {
+      const panel = document.getElementById('editResellerPanel');
+      const visible = panel.style.display !== 'none';
+      panel.style.display = visible ? 'none' : 'block';
+      document.getElementById('editResellerButton').textContent = visible ? 'Edit reseller' : 'Close edit';
+    };
+    const editPanel = document.getElementById('editResellerPanel');
+    const creditPanel = document.getElementById('creditForm').closest('.panel');
+    const settlementPanel = document.getElementById('settlementForm').closest('.panel');
+    editPanel.parentNode.insertBefore(creditPanel, editPanel.nextSibling);
+    editPanel.parentNode.insertBefore(settlementPanel, creditPanel.nextSibling);
+
+    document.getElementById('editResellerForm').onsubmit = async (event) => {
+      event.preventDefault();
+      try {
+        await adminApi.request(`/resellers/${encodeURIComponent(resellerId)}`, { method: 'PATCH', body: JSON.stringify(Object.fromEntries(new FormData(event.target))) });
+        await loadResellerDetail();
+      } catch (err) { alert(err.message); }
     };
 
     document.getElementById('creditForm').onsubmit = async (event) => {

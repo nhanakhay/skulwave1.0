@@ -266,6 +266,7 @@
   }
 
   .ghost-btn{
+    padding-top:50px;
     padding:11px 26px;
     border-radius:8px;
     border:1.5px solid var(--brass-1);

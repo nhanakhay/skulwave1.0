@@ -31,13 +31,9 @@
             <label for="si-password">Password</label>
             <input id="si-password" name="password" type="password" autocomplete="current-password" required>
           </div>
-          <div class="field">
-            <label for="si-confirm-password">Confirm password <small>(first time only)</small></label>
-            <input id="si-confirm-password" name="confirm_password" type="password" autocomplete="new-password">
-          </div>
-          <button class="submit" id="paymentAccountButton" type="submit">Continue to packages</button>
+          <button class="submit" id="paymentAccountButton" type="submit">Sign In</button>
           <div id="paymentAccountLoading" class="loading-spinner"><div class="spinner"></div><p>Checking account…</p></div>
-          <button class="packages-button" type="button" onclick="window.location.href='viewPackages.html'">View packages</button>
+          <div class="row-between" style="margin-top:18px"><span>New to SkulWave?</span><a href="signup.html">Create an account</a></div>
         </form>
 
         <div class="switch-mobile">
@@ -115,6 +111,7 @@
             <h2>Start something<br>new today.</h2>
             <p>Set up an account in moments and get full access to your dashboard.</p>
             <button class="ghost-btn" onclick="setMode(true)">Voucher Code</button>
+            <button class="ghost-btn" type="button" onclick="window.location.href='viewPackages.html'">View packages</button>
             <div class="stamp">POWERED BY SKULWAVE</div>
           </div>
         </div>

@@ -10,7 +10,7 @@ async function handlePaymentAccount(event) {
     const form = event.currentTarget, button = document.getElementById('paymentAccountButton'), loading = document.getElementById('paymentAccountLoading');
     button.disabled = true; loading.style.display = 'block';
     try {
-        const response = await fetch('/api/payment/account', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.fromEntries(new FormData(form))) });
+        const response = await fetch('/api/payment/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.fromEntries(new FormData(form))) });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'Unable to continue.');
         sessionStorage.setItem('skulwaveAccountToken', data.account_token);
