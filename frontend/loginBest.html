@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkulWave | Login</title>
+  <title>Local SkulWave</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <!-- <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"> -->
   
@@ -18,27 +18,27 @@
     <!-- SIGN IN -->
     <div class="form-panel" id="signin">
       <div class="inner">
-        <div class="eyebrow">Hwidiem SHS · Member Access</div>
+        <div class="eyebrow">Meridian · Member Access</div>
         <h1>SkulWave Wifi</h1>
         <p class="lede">Sign in to pick up where you left off.</p>
 
-        <form id="paymentAccountForm" onsubmit="return handlePaymentAccount(event)">
+        <form onsubmit="return false;">
           <div class="field">
             <label for="si-email">Email</label>
-            <input id="si-email" name="email" type="email" autocomplete="email" placeholder="sample@gmail.com" required>
+            <input id="si-email" type="email" autocomplete="email" placeholder="sample@gmail.com" required disabled>
           </div>
-          <div class="field">
-            <label for="si-password">Password</label>
-            <input id="si-password" name="password" type="password" autocomplete="current-password" required>
+          
+          <div class="row-between">
+            <span>&nbsp;</span>
+            <a href="#">Forgot password?</a>
           </div>
-          <button class="submit" id="paymentAccountButton" type="submit">Sign In</button>
-          <div id="paymentAccountLoading" class="loading-spinner"><div class="spinner"></div><p>Checking account…</p></div>
-          <div class="row-between" style="margin-top:18px"><span>New to SkulWave?</span><a href="signup.html">Create an account</a></div>
+          <button class="submit" type="submit" disabled>Sign in</button>
+          <button class="packages-button" type="button" onclick="window.location.href='viewPackages.html'">View packages</button>
         </form>
 
         <div class="switch-mobile">
-          Having a Voucher?
-          <button type="button" onclick="setMode(true)">Enter Voucher</button>
+          New here?
+          <button type="button" onclick="setMode(true)">Create an account</button>
         </div>
       </div>
     </div>
@@ -53,11 +53,11 @@
         <form id="voucherForm" onsubmit="return handleLogin(event)">
           <div class="field">
             <label for="su-username"> Name</label>
-            <input id="vFullname" type="text" autocomplete="name" placeholder="Theo Kofi" required>
+            <input id="vFullname" type="text" autocomplete="name" placeholder="Nana Ama" required>
           </div>
           <div class="field">
             <label for="su-voucher">Voucher</label>
-            <input id="vUsername" type="text" autocomplete="voucher" placeholder="BD3548234500" maxlength="12" required>
+            <input id="vUsername" type="text" autocomplete="voucher" placeholder="01-35343-1" required>
           </div>
           
           <button class="submit" id="vLoginBtn" type="submit">Connect</button>
@@ -111,7 +111,6 @@
             <h2>Start something<br>new today.</h2>
             <p>Set up an account in moments and get full access to your dashboard.</p>
             <button class="ghost-btn" onclick="setMode(true)">Voucher Code</button>
-            <button class="ghost-btn" type="button" onclick="window.location.href='viewPackages.html'">View packages</button>
             <div class="stamp">POWERED BY SKULWAVE</div>
           </div>
         </div>
