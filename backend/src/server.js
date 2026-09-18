@@ -55,6 +55,11 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "../../frontend/login.html"));
 });
 
-app.listen(3000, "0.0.0.0", () => {
-    console.log("Skulwave backend running on port 3000")
+db.waitForReady().then(() => {
+  app.listen(3000, "0.0.0.0", () => {
+    console.log("Skulwave backend running on port 3000");
+  });
+}).catch((error) => {
+  console.error('[server] Database migration failed; server was not started:', error.message);
+  process.exitCode = 1;
 });
