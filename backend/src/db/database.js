@@ -64,9 +64,10 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS admin_accounts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
+  school_name TEXT,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'SCHOOL_ADMIN',
+  role TEXT NOT NULL DEFAULT 'SCHOOL_MANAGER',
   status TEXT NOT NULL DEFAULT 'ACTIVE',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -114,9 +115,10 @@ CREATE TABLE IF NOT EXISTS vouchers (
   FOREIGN KEY (package_id) REFERENCES packages(id)
 );
 
-CREATE TABLE IF NOT EXISTS resellers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, phone TEXT, status TEXT NOT NULL DEFAULT 'ACTIVE', credit_balance REAL NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_login_at DATETIME);
+CREATE TABLE IF NOT EXISTS resellers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, phone TEXT, status TEXT NOT NULL DEFAULT 'ACTIVE', credit_balance REAL NOT NULL DEFAULT 0, school_manager_id INTEGER, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP, last_login_at DATETIME, FOREIGN KEY (school_manager_id) REFERENCES admin_accounts(id));
 CREATE TABLE IF NOT EXISTS reseller_sales (id INTEGER PRIMARY KEY AUTOINCREMENT, voucher_id INTEGER UNIQUE NOT NULL, reseller_id INTEGER NOT NULL, package_id INTEGER NOT NULL, student_price REAL NOT NULL, reseller_commission REAL NOT NULL, skulwave_amount REAL NOT NULL, sold_at DATETIME NOT NULL, redeemed_at DATETIME, settlement_status TEXT NOT NULL DEFAULT 'UNSETTLED', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS reseller_settlements (id INTEGER PRIMARY KEY AUTOINCREMENT, reseller_id INTEGER NOT NULL, amount REAL NOT NULL, payment_method TEXT NOT NULL, reference TEXT, notes TEXT, recorded_by TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS school_manager_settlements (id INTEGER PRIMARY KEY AUTOINCREMENT, school_manager_id INTEGER NOT NULL, amount REAL NOT NULL, payment_method TEXT NOT NULL, reference TEXT, notes TEXT, recorded_by TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (school_manager_id) REFERENCES admin_accounts(id));
 CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor_type TEXT, actor_id INTEGER, event TEXT NOT NULL, entity_type TEXT, entity_id INTEGER, details TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
 
 CREATE TABLE IF NOT EXISTS voucher_sessions (
@@ -154,6 +156,8 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
 CREATE INDEX IF NOT EXISTS idx_transactions_reference ON transactions(paystack_reference);
 CREATE INDEX IF NOT EXISTS idx_reseller_sales_sold_at ON reseller_sales(sold_at);
+CREATE INDEX IF NOT EXISTS idx_resellers_school_manager_id ON resellers(school_manager_id);
+CREATE INDEX IF NOT EXISTS idx_school_manager_settlements_manager_id ON school_manager_settlements(school_manager_id);
 `;
 
 // ─────────────────────────────────────────────
@@ -390,7 +394,7 @@ function initializeDatabase(callback) {
           return;
         }
 
-        const migrations=['ALTER TABLE packages ADD COLUMN reseller_enabled INTEGER NOT NULL DEFAULT 1','ALTER TABLE packages ADD COLUMN reseller_commission_percent REAL NOT NULL DEFAULT 1','ALTER TABLE vouchers ADD COLUMN reseller_id INTEGER','ALTER TABLE vouchers ADD COLUMN sold_at DATETIME','ALTER TABLE vouchers ADD COLUMN buyer_full_name TEXT','ALTER TABLE resellers ADD COLUMN credit_balance REAL NOT NULL DEFAULT 0','ALTER TABLE users ADD COLUMN email TEXT','ALTER TABLE users ADD COLUMN hotspot_username TEXT','ALTER TABLE users ADD COLUMN hotspot_password_hash TEXT','ALTER TABLE users ADD COLUMN active_package_id INTEGER','ALTER TABLE users ADD COLUMN package_expires_at DATETIME','ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT \'INACTIVE\'','ALTER TABLE transactions ADD COLUMN paid_at DATETIME','ALTER TABLE transactions ADD COLUMN payment_channel TEXT','ALTER TABLE transactions ADD COLUMN access_granted_at DATETIME','ALTER TABLE sessions ADD COLUMN hotspot_username TEXT','ALTER TABLE sessions ADD COLUMN expires_at DATETIME']; let migrationIndex=0;
+        const migrations=['ALTER TABLE packages ADD COLUMN reseller_enabled INTEGER NOT NULL DEFAULT 1','ALTER TABLE packages ADD COLUMN reseller_commission_percent REAL NOT NULL DEFAULT 1','ALTER TABLE vouchers ADD COLUMN reseller_id INTEGER','ALTER TABLE vouchers ADD COLUMN sold_at DATETIME','ALTER TABLE vouchers ADD COLUMN buyer_full_name TEXT','ALTER TABLE resellers ADD COLUMN credit_balance REAL NOT NULL DEFAULT 0','ALTER TABLE resellers ADD COLUMN school_manager_id INTEGER','ALTER TABLE admin_accounts ADD COLUMN school_name TEXT','ALTER TABLE users ADD COLUMN email TEXT','ALTER TABLE users ADD COLUMN hotspot_username TEXT','ALTER TABLE users ADD COLUMN hotspot_password_hash TEXT','ALTER TABLE users ADD COLUMN active_package_id INTEGER','ALTER TABLE users ADD COLUMN package_expires_at DATETIME','ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT \'INACTIVE\'','ALTER TABLE transactions ADD COLUMN paid_at DATETIME','ALTER TABLE transactions ADD COLUMN payment_channel TEXT','ALTER TABLE transactions ADD COLUMN access_granted_at DATETIME','ALTER TABLE sessions ADD COLUMN hotspot_username TEXT','ALTER TABLE sessions ADD COLUMN expires_at DATETIME',"UPDATE admin_accounts SET status='SUSPENDED' WHERE role='SCHOOL_ADMIN'"]; let migrationIndex=0;
         const migrate=()=>{ if(migrationIndex<migrations.length) return db.run(migrations[migrationIndex++],migrate); prepareStatements();
         seedPackages((seedErr) => {
           if (seedErr) {

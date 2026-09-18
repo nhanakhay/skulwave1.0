@@ -2,10 +2,9 @@ const db = require('../db/database');
 
 exports.list = async (req, res) => {
   try {
-    const date=String(req.query.date||''); const [transactions, cashSales] = await Promise.all([db.allAsync(`SELECT t.id,u.username,p.name AS package_name,t.amount,t.paystack_reference,t.status,t.payment_channel,COALESCE(t.paid_at,t.created_at) created_at FROM transactions t LEFT JOIN users u ON u.id=t.user_id LEFT JOIN packages p ON p.id=t.package_id WHERE t.status='success' AND (?='' OR date(COALESCE(t.paid_at,t.created_at))=date(?)) ORDER BY COALESCE(t.paid_at,t.created_at) DESC`,[date,date]), db.allAsync(`SELECT s.id,s.sold_at AS created_at,s.student_price AS amount,s.reseller_commission,s.skulwave_amount,v.hotspot_username,p.name AS package_name,r.name AS reseller_name FROM reseller_sales s JOIN vouchers v ON v.id=s.voucher_id JOIN packages p ON p.id=s.package_id JOIN resellers r ON r.id=s.reseller_id WHERE (?='' OR date(s.sold_at)=date(?)) ORDER BY s.sold_at DESC`,[date,date])]);
-    const summary = await db.getAsync(`SELECT
-      (SELECT COALESCE(SUM(student_price),0) FROM reseller_sales WHERE (?='' OR date(sold_at)=date(?))) AS cash_revenue,
-      (SELECT COALESCE(SUM(amount),0) FROM transactions WHERE status='success' AND (?='' OR date(COALESCE(paid_at,created_at))=date(?))) AS payment_revenue`,[date,date,date,date]) || {};
+    const date=String(req.query.date||''), managerId=req.admin.role==='SCHOOL_MANAGER'?req.admin.id:null;
+    const [transactions, cashSales] = await Promise.all([managerId ? Promise.resolve([]) : db.allAsync(`SELECT t.id,u.username,p.name AS package_name,t.amount,t.paystack_reference,t.status,t.payment_channel,COALESCE(t.paid_at,t.created_at) created_at FROM transactions t LEFT JOIN users u ON u.id=t.user_id LEFT JOIN packages p ON p.id=t.package_id WHERE t.status='success' AND (?='' OR date(COALESCE(t.paid_at,t.created_at))=date(?)) ORDER BY COALESCE(t.paid_at,t.created_at) DESC`,[date,date]), db.allAsync(`SELECT s.id,s.sold_at AS created_at,s.student_price AS amount,s.reseller_commission,s.skulwave_amount,v.hotspot_username,p.name AS package_name,r.name AS reseller_name FROM reseller_sales s JOIN vouchers v ON v.id=s.voucher_id JOIN packages p ON p.id=s.package_id JOIN resellers r ON r.id=s.reseller_id WHERE (?='' OR date(s.sold_at)=date(?)) AND (? IS NULL OR r.school_manager_id=?) ORDER BY s.sold_at DESC`,[date,date,managerId,managerId])]);
+    const summary = { cash_revenue: cashSales.reduce((total, sale) => total + Number(sale.amount || 0), 0), payment_revenue: transactions.reduce((total, payment) => total + Number(payment.amount || 0), 0) };
     res.json({
       provider: 'Cash sales + Paystack',
       status: 'Paystack pending',

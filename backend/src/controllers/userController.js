@@ -1,5 +1,10 @@
 const db = require('../db/database');
-exports.list = async (_req,res) => { try { res.json({users:await db.getPreparedStatement('getAdminUsers').all()}); } catch (_) { res.status(500).json({error:'Unable to load users'}); } };
+exports.list = async (req,res) => { try {
+  const users = req.admin.role === 'SCHOOL_MANAGER'
+    ? await db.allAsync(`SELECT v.id,v.hotspot_username AS username,p.name AS package_name,v.buyer_full_name,v.status,v.created_at,v.redeemed_at,v.valid_until FROM vouchers v LEFT JOIN packages p ON p.id=v.package_id JOIN resellers r ON r.id=v.reseller_id WHERE r.school_manager_id=? ORDER BY v.created_at DESC`, [req.admin.id])
+    : await db.getPreparedStatement('getAdminUsers').all();
+  res.json({users});
+} catch (_) { res.status(500).json({error:'Unable to load users'}); } };
 // const bcrypt = require("bcryptjs");
 // const db = require("../db/database");
 

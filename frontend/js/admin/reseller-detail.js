@@ -8,6 +8,7 @@ function sum(values, selector) {
 
 async function loadResellerDetail() {
   const content = document.getElementById('adminContent');
+  const isSchoolManager = localStorage.getItem('adminRole') === 'SCHOOL_MANAGER';
   const url = new URL(window.location.href);
   const resellerId = url.searchParams.get('id');
   if (!resellerId) {
@@ -130,6 +131,12 @@ async function loadResellerDetail() {
     document.getElementById('backButton').onclick = () => {
       location.href = 'resellers.html';
     };
+    if (isSchoolManager) {
+      document.getElementById('editResellerButton').style.display = 'none';
+      document.getElementById('editResellerPanel').style.display = 'none';
+      document.getElementById('creditForm').closest('.panel').style.display = 'none';
+      document.getElementById('settlementForm').closest('.panel').style.display = 'none';
+    }
     document.getElementById('editResellerButton').onclick = () => {
       const panel = document.getElementById('editResellerPanel');
       const visible = panel.style.display !== 'none';

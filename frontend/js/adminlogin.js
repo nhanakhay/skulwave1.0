@@ -49,7 +49,7 @@ async function handleAdminLogin(event) {
         localStorage.setItem('adminApiKey', data.apiKey);
         localStorage.setItem('adminUsername', username);
         localStorage.setItem('adminRole', data.role || 'MAIN_ADMIN');
-        window.location.href = data.role === 'SCHOOL_ADMIN' ? '../admin/resellers.html' : '../admin/dashboard.html';
+        window.location.href = data.role === 'SCHOOL_MANAGER' ? '../admin/resellers.html' : '../admin/dashboard.html';
 
     } catch (err) {
         console.error(err);

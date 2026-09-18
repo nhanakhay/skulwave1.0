@@ -3,13 +3,14 @@ const ngn = (v) => new Intl.NumberFormat('en-GH', { style: 'currency', currency:
 
 async function loadResellers() {
   const c = document.getElementById('adminContent');
+  const isSchoolManager = localStorage.getItem('adminRole') === 'SCHOOL_MANAGER';
 
   const render = async () => {
     const selectedDate = new URLSearchParams(location.search).get('date') || new Date().toISOString().slice(0,10);
     const d = await adminApi.get(`/resellers?date=${encodeURIComponent(selectedDate)}`);
     c.innerHTML = `
       <h2>Resellers</h2>
-      <p class="lede">Create accounts and manage sales balances.</p><label>Sales date <input id="salesDate" type="date" value="${selectedDate}"></label>
+      <p class="lede">${isSchoolManager ? 'Create reseller accounts and view your school sales.' : 'Create accounts and manage sales balances.'}</p><label>Sales date <input id="salesDate" type="date" value="${selectedDate}"></label>
       <div class="panel form-card">
         <h3>Create reseller</h3>
         <form id="resellerForm" class="form-grid">
@@ -18,7 +19,7 @@ async function loadResellers() {
           <label>Username<input name="username" required></label>
           <label>Password<input name="password" type="password" minlength="6" required></label>
           <label>Confirm password<input name="confirm_password" type="password" minlength="6" required></label>
-          <label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="100" required></label>
+          ${isSchoolManager ? '' : '<label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="100" required></label>'}
           <button class="primary-button">Create reseller</button>
         </form>
       </div>
