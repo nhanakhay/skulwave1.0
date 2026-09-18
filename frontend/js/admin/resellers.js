@@ -83,7 +83,7 @@ async function loadResellers() {
 
     c.querySelectorAll('.view-detail').forEach((button) => {
       button.onclick = () => {
-        location.href = `reseller-detail.html?id=${encodeURIComponent(button.dataset.id)}`;
+        location.href = `resellerDetail.html?id=${encodeURIComponent(button.dataset.id)}`;
       };
     });
   };

@@ -1,0 +1,59 @@
+const esc = (v) =>
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+async function voucherGenerator() {
+  const c = document.getElementById("adminContent");
+  c.innerHTML =
+    '<h2>Generate vouchers</h2><p class="lede">Create Wi-Fi access vouchers directly from your admin dashboard.</p><div class="panel form-card"><form id="voucherForm"><div class="form-grid"><label>Voucher profile<select id="packageSelect" name="package_id"></select></label><label>Quantity<input name="count" type="number" min="1" max="100" value="1"></label></div><p class="lede" style="margin:16px 0">The shared voucher password is configured securely on the server.</p><button class="primary-button" id="generateBtn">Generate vouchers</button></form><div id="generatedList" style="display:none;margin-top:24px"><h3>Generated vouchers</h3><div id="generatedOutput" class="generated-output"></div></div></div>';
+  try {
+    const d = await adminApi.get("/packages");
+    document.getElementById("packageSelect").innerHTML = d.packages
+      .map(
+        (p) =>
+          `<option value="${p.id}">${esc(p.name)} (${esc(p.speed)})</option>`,
+      )
+      .join("");
+  } catch (e) {
+    c.innerHTML = `<div class="notice">${esc(e.message)}</div>`;
+    return;
+  }
+  document.getElementById("voucherForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const b = document.getElementById("generateBtn"),
+      form = new FormData(e.target),
+      count = Math.min(100, Math.max(1, Number(form.get("count")) || 1));
+    b.disabled = true;
+    const lines = [];
+    for (let i = 0; i < count; i++) {
+      try {
+        const r = await fetch("/api/vouchers/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": localStorage.getItem("adminApiKey") || "",
+          },
+          body: JSON.stringify({
+            package_id: form.get("package_id"),
+            created_by: localStorage.getItem("adminUsername") || "admin",
+          }),
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        lines.push(
+          `${d.voucher.hotspot_username}:${d.voucher.shared_password} (${d.voucher.package_name})`,
+        );
+      } catch (x) {
+        lines.push(`ERROR: ${x.message}`);
+      }
+    }
+    document.getElementById("generatedOutput").textContent = lines.join("\n");
+    document.getElementById("generatedList").style.display = "block";
+    b.disabled = false;
+  };
+}
+if (document.body.dataset.page === "generateVouchers") voucherGenerator();

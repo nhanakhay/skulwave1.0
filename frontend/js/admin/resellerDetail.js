@@ -184,4 +184,4 @@ async function loadResellerDetail() {
   }
 }
 
-if (document.body.dataset.page === 'reseller-detail') loadResellerDetail();
+if (document.body.dataset.page === 'resellerDetail') loadResellerDetail();
