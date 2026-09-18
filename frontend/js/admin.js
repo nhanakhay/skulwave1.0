@@ -1,5 +1,12 @@
 // Use relative path so page works regardless of hostname/port
 const apiBase = '/api/admin';
+const adminHome = () => localStorage.getItem('adminRole') === 'SCHOOL_MANAGER'
+    ? '/admin/resellers.html'
+    : '/admin/dashboard.html';
+
+// The current admin session is stored in localStorage. Do not show the login
+// form again while that credential is available.
+if (localStorage.getItem('adminApiKey')) window.location.replace(adminHome());
 
 async function handleAdminLogin(event) {
     event.preventDefault();
@@ -49,7 +56,7 @@ async function handleAdminLogin(event) {
         localStorage.setItem('adminApiKey', data.apiKey);
         localStorage.setItem('adminUsername', username);
         localStorage.setItem('adminRole', data.role || 'MAIN_ADMIN');
-        window.location.href = data.role === 'SCHOOL_MANAGER' ? '../admin/resellers.html' : '../admin/dashboard.html';
+        window.location.href = adminHome();
 
     } catch (err) {
         console.error(err);
