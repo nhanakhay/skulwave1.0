@@ -74,6 +74,8 @@ async function handleLogin(event) {
   loginLoading.style.display = "block";
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     const response = await fetch(apiBase, {
       method: "POST",
       headers: {
@@ -84,7 +86,9 @@ async function handleLogin(event) {
         vFullname: buyerFullName,
         buyer_full_name: buyerFullName,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     const data = await response.json().catch(() => ({}));
 
@@ -136,7 +140,9 @@ async function handleLogin(event) {
     console.error(err);
     loginBtn.disabled = false;
     loginLoading.style.display = "none";
-    alert("Server Error, contact Administrator in the IT");
+    alert(err.name === "AbortError"
+      ? "The router is busy or temporarily unreachable. Please wait a moment and try again."
+      : "The router could not complete the connection. Please wait a moment and try again.");
     return false;
   }
 }

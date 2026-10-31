@@ -34,9 +34,11 @@ class MikroTikConnectionPool {
   }
 
   async getConnection() {
-    // Reuse available connection
-    if (this.connections.length > 0) {
-      return this.connections.pop();
+    // Reuse only connections that have not emitted an error/close event.
+    while (this.connections.length > 0) {
+      const conn = this.connections.pop();
+      if (!conn._poolBroken) return conn;
+      this.destroyConnection(conn);
     }
 
     // Create new connection if under limit
@@ -50,6 +52,8 @@ class MikroTikConnectionPool {
         // timeout in milliseconds (10s)
         timeout: 10000,
       });
+      conn._poolCounted = true;
+      conn._poolBroken = false;
 
       conn.on('connect', () => {
         console.log(`[mikrotik] Connected to RouterOS at ${process.env.MIKROTIK_HOST}`);
@@ -57,15 +61,26 @@ class MikroTikConnectionPool {
 
       // Prevent unhandled 'error' events from crashing the process
       conn.on('error', (err) => {
+        conn._poolBroken = true;
         console.error('[mikrotik] RouterOS connection error:', err && err.message ? err.message : err);
+        this.removeAvailableConnection(conn);
         try { conn.close(); } catch (e) { /* ignore */ }
+      });
+      conn.on('close', () => {
+        conn._poolBroken = true;
+        this.removeAvailableConnection(conn);
+        if (conn._poolCounted) {
+          conn._poolCounted = false;
+          this.activeCount = Math.max(0, this.activeCount - 1);
+        }
+        this.fulfillNextWaiter();
       });
 
       try {
         await conn.connect();
       } catch (err) {
-        this.activeCount = Math.max(0, this.activeCount - 1);
-        console.error('[mikrotik] Failed to connect to RouterOS:', {
+        this.destroyConnection(conn);
+        console.error('[mikrotik] Failed to connect to RouterOS', {
           host: process.env.MIKROTIK_HOST,
           port: 8728,
           message: err && err.message ? err.message : err,
@@ -77,29 +92,55 @@ class MikroTikConnectionPool {
     }
 
     // Wait for a connection to free up
-    return new Promise((resolve) => {
-      this.waitQueue.push(resolve);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const index = this.waitQueue.findIndex((item) => item.reject === reject);
+        if (index >= 0) this.waitQueue.splice(index, 1);
+        reject(new Error('RouterOS connection pool is busy; please try again.'));
+      }, 15000);
+      this.waitQueue.push({ resolve: (conn) => { clearTimeout(timer); resolve(conn); }, reject });
     });
   }
 
   releaseConnection(conn) {
     if (!conn) return;
+    if (conn._poolBroken) {
+      this.destroyConnection(conn);
+      this.fulfillNextWaiter();
+      return;
+    }
     if (this.waitQueue.length > 0) {
-      const resolve = this.waitQueue.shift();
-      resolve(conn);
+      this.waitQueue.shift().resolve(conn);
     } else {
       this.connections.push(conn);
     }
   }
 
-  async closeAll() {
-    for (const conn of this.connections) {
-      try {
-        conn.close();
-      } catch (err) {
-        console.warn('[mikrotik] Error closing connection:', err.message);
-      }
+  fulfillNextWaiter() {
+    if (this.waitQueue.length > 0 && this.activeCount < this.maxConnections) {
+      const waiter = this.waitQueue.shift();
+      this.getConnection().then(waiter.resolve).catch(waiter.reject);
     }
+  }
+
+  removeAvailableConnection(conn) {
+    const index = this.connections.indexOf(conn);
+    if (index >= 0) this.connections.splice(index, 1);
+  }
+
+  destroyConnection(conn) {
+    if (!conn) return;
+    conn._poolBroken = true;
+    this.removeAvailableConnection(conn);
+    if (conn._poolCounted) {
+      conn._poolCounted = false;
+      this.activeCount = Math.max(0, this.activeCount - 1);
+    }
+    try { conn.close(); } catch (e) { /* ignore */ }
+  }
+
+  async closeAll() {
+    for (const conn of [...this.connections]) this.destroyConnection(conn);
     this.connections = [];
     this.activeCount = 0;
   }
