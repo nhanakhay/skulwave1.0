@@ -17,16 +17,24 @@ router.post("/login", async (req, res) => {
     "SELECT * FROM admin_accounts WHERE username=?",
     [username],
   );
-  if (
-    !account ||
-    account.status !== "ACTIVE" ||
-    !(await bcrypt.compare(password || "", account.password_hash))
+  if (!account || account.role !== 'MAIN_ADMIN' || account.status !== "ACTIVE" ||
+      !(await bcrypt.compare(password || "", account.password_hash))
   )
     return res.status(401).json({ error: "Invalid admin credentials" });
   await db.runAsync(
     "UPDATE admin_accounts SET last_login_at=CURRENT_TIMESTAMP WHERE id=?",
     [account.id],
   );
+  res.json({ apiKey: auth.makeToken(account), role: account.role });
+});
+
+// School Managers use their own login page so they never enter Main Admin.
+router.post('/manager-login', async (req, res) => {
+  const { username, password } = req.body || {};
+  const account = await db.getAsync('SELECT * FROM admin_accounts WHERE username=?', [username]);
+  if (!account || account.role !== 'SCHOOL_MANAGER' || account.status !== 'ACTIVE' || 
+    !(await bcrypt.compare(password || '', account.password_hash))) return res.status(401).json({ error: 'Invalid School Manager credentials' });
+  await db.runAsync('UPDATE admin_accounts SET last_login_at=CURRENT_TIMESTAMP WHERE id=?', [account.id]);
   res.json({ apiKey: auth.makeToken(account), role: account.role });
 });
 
@@ -77,29 +85,60 @@ router.get("/sessions", mainOnly, sessions.list);
 router.get("/revenue", managerOrMain, revenue.list);
 router.get("/analytics", mainOnly, analytics.overview);
 router.get("/dashboard", mainOnly, analytics.overview);
+router.get('/schools', mainOnly, async (_req, res) => {
+  const [schools, managers, resellers] = await Promise.all([
+    db.allAsync('SELECT * FROM schools ORDER BY name'),
+    db.allAsync("SELECT id,name,username,school_id FROM admin_accounts WHERE role='SCHOOL_MANAGER' ORDER BY name"),
+    db.allAsync('SELECT id,name,username,school_id FROM resellers ORDER BY name'),
+  ]);
+  res.json({ schools, managers, resellers });
+});
+router.post('/schools', mainOnly, async (req, res) => {
+  const name = String(req.body?.name || '').trim();
+  const managerIds = Array.isArray(req.body?.manager_ids) ? req.body.manager_ids.map(Number).filter(Number.isInteger) : [];
+  const resellerIds = Array.isArray(req.body?.reseller_ids) ? req.body.reseller_ids.map(Number).filter(Number.isInteger) : [];
+  if (!name) return res.status(400).json({ error: 'School name is required.' });
+  try {
+    await db.runAsync('BEGIN IMMEDIATE');
+    const school = await db.runAsync('INSERT INTO schools(name) VALUES(?)', [name]);
+    for (const id of managerIds) await db.runAsync("UPDATE admin_accounts SET school_id=? WHERE id=? AND role='SCHOOL_MANAGER'", [school.lastID, id]);
+    for (const id of resellerIds) await db.runAsync('UPDATE resellers SET school_id=? WHERE id=?', [school.lastID, id]);
+    await db.runAsync('COMMIT');
+    res.status(201).json({ id: school.lastID });
+  } catch (error) { await db.runAsync('ROLLBACK').catch(() => {}); res.status(409).json({ error: error.message.includes('UNIQUE') ? 'A school with this name already exists.' : 'Unable to create school.' }); }
+});
 router.get('/school-managers', mainOnly, async (_req, res) => {
-  const managers = await db.allAsync(`SELECT a.id,a.name,a.school_name,a.username,a.status,a.created_at,a.last_login_at,COUNT(DISTINCT r.id) reseller_count,COALESCE(SUM(s.student_price),0) total_sales,COALESCE(SUM(s.skulwave_amount),0) skulwave_due,COALESCE((SELECT SUM(amount) FROM school_manager_settlements x WHERE x.school_manager_id=a.id),0) remitted FROM admin_accounts a LEFT JOIN resellers r ON r.school_manager_id=a.id LEFT JOIN reseller_sales s ON s.reseller_id=r.id WHERE a.role='SCHOOL_MANAGER' GROUP BY a.id ORDER BY a.created_at DESC`);
-  res.json({ schoolManagers: managers.map((manager) => ({ ...manager, outstanding: Number(manager.skulwave_due || 0) - Number(manager.remitted || 0) })) });
+  // Keep this list lightweight, like the Resellers overview. Detailed sales
+  // remain available in the manager's own restricted area.
+  const schoolManagers = await db.allAsync("SELECT id,name,username,status,created_at,last_login_at FROM admin_accounts WHERE role='SCHOOL_MANAGER' ORDER BY created_at DESC");
+  res.json({ schoolManagers });
 });
 router.post("/school-managers", mainOnly, async (req, res) => {
   const b = req.body || {};
+  // Use the cleaned username for both validation and storage.
+  const username = String(b.username || '').trim();
   if (
     !b.name ||
-    !b.school_name || !b.username ||
+    !username ||
     !b.password ||
     b.password !== b.confirm_password
   )
     return res
       .status(400)
       .json({ error: "Name, username, and matching password are required." });
+  // Administrator usernames share one table, so explain a duplicate before
+  // SQLite returns its less helpful unique-constraint error.
+  const existingAccount = await db.getAsync('SELECT role FROM admin_accounts WHERE lower(username)=lower(?)', [username]);
+  if (existingAccount) return res.status(409).json({ error: `The username “${username}” is already used by an administrator account.` });
   try {
     const x = await db.runAsync(
-      "INSERT INTO admin_accounts(name,school_name,username,password_hash,role) VALUES(?,?,?,?,?,'SCHOOL_MANAGER')",
-      [b.name, b.school_name, b.username, await bcrypt.hash(b.password, 10)],
+      "INSERT INTO admin_accounts(name,username,password_hash,role) VALUES(?,?,?,'SCHOOL_MANAGER')",
+      [b.name.trim(), username, await bcrypt.hash(b.password, 10)],
     );
     res.status(201).json({ id: x.lastID });
-  } catch (_) {
-    res.status(409).json({ error: "Username already exists" });
+  } catch (error) {
+    // Handles a second request that used the same username at the same time.
+    res.status(409).json({ error: error.message.includes('UNIQUE') ? 'That username was just used by another administrator account.' : 'Unable to create the School Manager account.' });
   }
 });
 router.patch('/school-managers/:id', mainOnly, async (req, res) => {
@@ -111,6 +150,18 @@ router.patch('/school-managers/:id', mainOnly, async (req, res) => {
   } else await db.runAsync("UPDATE admin_accounts SET name=COALESCE(?,name),username=COALESCE(?,username),updated_at=CURRENT_TIMESTAMP WHERE id=? AND role='SCHOOL_MANAGER'",[b.name||null,b.username||null,id]);
   res.json({ message: 'School manager updated' });
 });
+router.get('/school-managers/:id/settlement-activity', mainOnly, async (req, res) => {
+  const managerId = Number(req.params.id);
+  const date = String(req.query.date || '');
+  const manager = await db.getAsync("SELECT id,name,username FROM admin_accounts WHERE id=? AND role='SCHOOL_MANAGER'", [managerId]);
+  if (!manager) return res.status(404).json({ error: 'School Manager not found.' });
+  // The table is always complete; the calendar changes only the day summary.
+  const [settlements, selectedDay] = await Promise.all([
+    db.allAsync('SELECT s.*,r.name reseller_name,r.username reseller_username FROM reseller_settlements s JOIN resellers r ON r.id=s.reseller_id WHERE s.recorded_by_manager_id=? ORDER BY s.created_at DESC', [managerId]),
+    db.getAsync("SELECT COALESCE(SUM(amount),0) total,COUNT(*) count FROM reseller_settlements WHERE recorded_by_manager_id=? AND (?='' OR date(created_at)=date(?))", [managerId, date, date]),
+  ]);
+  res.json({ manager, settlements, selectedDay, date });
+});
 router.post('/school-managers/:id/settlements', mainOnly, async (req, res) => {
   const b=req.body||{}, amount=Number(b.amount), id=Number(req.params.id);
   if (!Number.isFinite(amount) || amount<=0 || !b.payment_method) return res.status(400).json({ error: 'Amount and payment method are required.' });
@@ -119,10 +170,10 @@ router.post('/school-managers/:id/settlements', mainOnly, async (req, res) => {
 });
 router.get("/resellers", managerOrMain, async (req, res) => {
   const date = String(req.query.date || "");
-  const managerId = req.admin.role === 'SCHOOL_MANAGER' ? req.admin.id : null;
+  const managerId = req.admin.role === 'SCHOOL_MANAGER' ? req.admin.school_id : null;
   res.json({
     resellers: await db.allAsync(
-      `SELECT r.id,r.name,r.username,r.phone,r.status,r.credit_balance,r.school_manager_id,r.created_at,r.last_login_at,COALESCE(SUM(CASE WHEN (?='' OR date(s.sold_at)=date(?)) THEN s.student_price END),0) total_sales,COALESCE(SUM(CASE WHEN (?='' OR date(s.sold_at)=date(?)) THEN s.reseller_commission END),0) commission,COALESCE(SUM(CASE WHEN (?='' OR date(s.sold_at)=date(?)) THEN s.student_price END),0)-COALESCE((SELECT SUM(amount) FROM reseller_settlements x WHERE x.reseller_id=r.id AND (?='' OR date(x.created_at)=date(?))),0) outstanding FROM resellers r LEFT JOIN reseller_sales s ON s.reseller_id=r.id WHERE (? IS NULL OR r.school_manager_id=?) GROUP BY r.id ORDER BY r.created_at DESC`,
+      `SELECT r.id,r.name,r.username,r.phone,r.status,r.credit_balance,r.school_id,r.created_at,r.last_login_at,COALESCE(SUM(CASE WHEN (?='' OR date(s.sold_at)=date(?)) THEN s.student_price END),0) total_sales,COALESCE(SUM(CASE WHEN (?='' OR date(s.sold_at)=date(?)) THEN s.reseller_commission END),0) commission,COALESCE(SUM(CASE WHEN (?='' OR date(s.sold_at)=date(?)) THEN s.student_price END),0)-COALESCE((SELECT SUM(amount) FROM reseller_settlements x WHERE x.reseller_id=r.id AND (?='' OR date(x.created_at)=date(?))),0) outstanding FROM resellers r LEFT JOIN reseller_sales s ON s.reseller_id=r.id WHERE (? IS NULL OR r.school_id=?) GROUP BY r.id ORDER BY r.created_at DESC`,
       [date, date, date, date, date, date, date, date, managerId, managerId],
     ),
   });
@@ -147,13 +198,13 @@ router.post("/resellers", managerOrMain, async (req, res) => {
       });
   try {
     const x = await db.runAsync(
-      "INSERT INTO resellers(name,username,password_hash,phone,credit_balance,school_manager_id) VALUES(?,?,?,?,?,?)",
+      "INSERT INTO resellers(name,username,password_hash,phone,credit_balance,school_manager_id,school_id) VALUES(?,?,?,?,?,?,?)",
       [
         b.name,
         b.username,
         await bcrypt.hash(b.password, 10),
         b.phone || "",
-        credit, req.admin.role === 'SCHOOL_MANAGER' ? req.admin.id : (b.school_manager_id || null),
+        credit, req.admin.role === 'SCHOOL_MANAGER' ? req.admin.id : (b.school_manager_id || null), req.admin.role === 'SCHOOL_MANAGER' ? req.admin.school_id : (b.school_id || null),
       ],
     );
     res.status(201).json({ id: x.lastID });
@@ -164,9 +215,10 @@ router.post("/resellers", managerOrMain, async (req, res) => {
 router.patch("/resellers/:id", managerOrMain, async (req, res) => {
   const b = req.body || {},
     credit = b.credit_balance === undefined ? null : Number(b.credit_balance);
-  const reseller = await db.getAsync('SELECT school_manager_id FROM resellers WHERE id=?', [req.params.id]);
-  if (!reseller || (req.admin.role === 'SCHOOL_MANAGER' && reseller.school_manager_id !== req.admin.id)) return res.status(404).json({ error: 'Not found' });
-  if (req.admin.role === 'SCHOOL_MANAGER' && credit !== null) return res.status(403).json({ error: 'Only the main admin can change reseller credit.' });
+  const reseller = await db.getAsync('SELECT school_id FROM resellers WHERE id=?', [req.params.id]);
+  if (!reseller || (req.admin.role === 'SCHOOL_MANAGER' && reseller.school_id !== req.admin.school_id)) return res.status(404).json({ error: 'Not found' });
+  // The school check above ensures a School Manager can add credit only to
+  // resellers assigned to that manager's own school.
   if (b.status && !["ACTIVE", "SUSPENDED"].includes(b.status))
     return res.status(400).json({ error: "Invalid status" });
   if (credit !== null && (!Number.isFinite(credit) || credit < 0))
@@ -201,10 +253,10 @@ router.get("/resellers/:id", managerOrMain, async (req, res) => {
   const id = req.params.id,
     date = String(req.query.date || ""),
     reseller = await db.getAsync(
-      "SELECT id,name,username,phone,status,credit_balance,school_manager_id,created_at,last_login_at FROM resellers WHERE id=?",
+      "SELECT id,name,username,phone,status,credit_balance,school_id,created_at,last_login_at FROM resellers WHERE id=?",
       [id],
     );
-  if (!reseller || (req.admin.role === 'SCHOOL_MANAGER' && reseller.school_manager_id !== req.admin.id)) return res.status(404).json({ error: "Not found" });
+  if (!reseller || (req.admin.role === 'SCHOOL_MANAGER' && reseller.school_id !== req.admin.school_id)) return res.status(404).json({ error: "Not found" });
   const [vouchers, sales, settlements] = await Promise.all([
     db.allAsync(
       "SELECT v.*,p.name package_name,p.price FROM vouchers v JOIN packages p ON p.id=v.package_id WHERE reseller_id=? ORDER BY created_at DESC",
@@ -221,7 +273,7 @@ router.get("/resellers/:id", managerOrMain, async (req, res) => {
   ]);
   res.json({ reseller, vouchers, sales, settlements });
 });
-router.post("/resellers/:id/settlements", mainOnly, async (req, res) => {
+router.post("/resellers/:id/settlements", managerOrMain, async (req, res) => {
   const b = req.body || {};
   if (
     !Number.isFinite(Number(b.amount)) ||
@@ -229,15 +281,18 @@ router.post("/resellers/:id/settlements", mainOnly, async (req, res) => {
     !["CASH", "MOMO", "OTHER"].includes(b.payment_method)
   )
     return res.status(400).json({ error: "Invalid settlement" });
+  const reseller = await db.getAsync('SELECT school_id FROM resellers WHERE id=?', [req.params.id]);
+  if (!reseller || (req.admin.role === 'SCHOOL_MANAGER' && reseller.school_id !== req.admin.school_id)) return res.status(404).json({ error: 'Reseller not found.' });
   const x = await db.runAsync(
-    "INSERT INTO reseller_settlements(reseller_id,amount,payment_method,reference,notes,recorded_by) VALUES(?,?,?,?,?,?)",
+    "INSERT INTO reseller_settlements(reseller_id,amount,payment_method,reference,notes,recorded_by,recorded_by_manager_id) VALUES(?,?,?,?,?,?,?)",
     [
       req.params.id,
       Number(b.amount),
       b.payment_method,
       b.reference || "",
       b.notes || "",
-      "admin",
+      req.admin.role === 'SCHOOL_MANAGER' ? req.admin.name : 'Main admin',
+      req.admin.role === 'SCHOOL_MANAGER' ? req.admin.id : null,
     ],
   );
   res.status(201).json({ id: x.lastID });

@@ -134,8 +134,6 @@ async function loadResellerDetail() {
     if (isSchoolManager) {
       document.getElementById('editResellerButton').style.display = 'none';
       document.getElementById('editResellerPanel').style.display = 'none';
-      document.getElementById('creditForm').closest('.panel').style.display = 'none';
-      document.getElementById('settlementForm').closest('.panel').style.display = 'none';
     }
     document.getElementById('editResellerButton').onclick = () => {
       const panel = document.getElementById('editResellerPanel');

@@ -2,9 +2,27 @@ const apiBase = `${window.location.protocol}//${window.location.host}/api/vouche
 
 // const apiBase = "/api/vouchers/redeem"
 
+    function close(){
+      addEventListener
+    }
+
 const query = new URLSearchParams(window.location.search);
 const routerLoginUrl = query.get("router-login");
 const originalDestination = query.get("dst");
+
+function togglePassword() {
+    const passwordInput = document.getElementById("si-password");
+    const toggle = document.querySelector('.password-toggle');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggle.textContent = '🙈';
+        toggle.title = 'Hide password';
+    } else {
+        passwordInput.type = 'password';
+        toggle.textContent = '👁';
+        toggle.title = 'Show password';
+    }
+}
 
 async function handlePaymentAccount(event) {
   event.preventDefault();
@@ -30,6 +48,8 @@ async function handlePaymentAccount(event) {
   }
   return false;
 }
+
+
 
 async function handleLogin(event) {
   event.preventDefault();

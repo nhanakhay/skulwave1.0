@@ -28,24 +28,24 @@ async function loadResellers() {
           <thead>
             <tr>
               <th>Reseller</th>
+               <th>Details</th>
               <th>Sales</th>
               <th>Commission</th>
               <th>Credit</th>
               <th>Outstanding</th>
               <th>Status</th>
-              <th>Details</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>${d.resellers.length ? d.resellers.map((r) => `
               <tr>
                 <td><strong>${esc(r.name)}</strong><br><small>${esc(r.username)}</small></td>
+                <td><button class="primary-button view-detail" data-id="${r.id}">View</button></td>
                 <td>${ngn(r.total_sales)}</td>
                 <td>${ngn(r.commission)}</td>
                 <td>${ngn(r.credit_balance)}</td>
                 <td>${ngn(r.outstanding)}</td>
                 <td><span class="badge ${r.status === 'ACTIVE' ? 'active' : 'expired'}">${esc(r.status)}</span></td>
-                <td><button class="primary-button view-detail" data-id="${r.id}">View</button></td>
                 <td><button class="primary-button toggle" data-id="${r.id}" data-status="${r.status}">${r.status === 'ACTIVE' ? 'Suspend' : 'Activate'}</button></td>
               </tr>
             `).join('') : '<tr><td colspan="8" class="empty">No resellers yet.</td></tr>'}</tbody>

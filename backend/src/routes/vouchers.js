@@ -34,7 +34,7 @@ function resolveSharedPassword() {
 const PROFILE_MAP = {
   1: "research-daily",
   2: "research-weekly",
-  3: "research-monthly",
+  3: "basic-3days",
   4: "basic-daily",
   5: "basic-weekly",
   6: "basic-monthly",

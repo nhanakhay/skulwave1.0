@@ -43,6 +43,9 @@ const migrations = [
   require('./migrations/003_reseller_tables'),
   require('./migrations/004_school_manager_support'),
   require('./migrations/005_seed_default_packages'),
+  require('./migrations/006_school_assignments'),
+  require('./migrations/007_track_manager_settlements'),
+  require('./migrations/008_replace_research_monthly_with_3basic'),
 ];
 
 async function applyMigration(migration) {

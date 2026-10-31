@@ -2,34 +2,78 @@
 <html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Create account | SkulWave</title>
-    <link rel="stylesheet" href="css/login.css">
+    <link rel="stylesheet" href="css/login.css" />
 </head>
 
 <body>
-    <main class="stage" style="max-width:500px;min-height:auto">
-        <section class="form-panel" style="position:relative;width:100%;padding:52px 40px">
+    <main class="stage" style="max-width: 500px; min-height: auto">
+        <section class="form-panel" style="position: relative; width: 100%; padding: 52px 40px">
             <div class="inner">
                 <div class="eyebrow">SkulWave · Account</div>
                 <h1>Create your account</h1>
-                <p class="lede">Use your email and password to buy internet packages with Mobile Money.</p>
+                <p class="lede">
+                    Use your email and password to buy internet packages with Mobile
+                    Money.
+                </p>
                 <form id="signupForm">
-                    <div class="field"><label>Email</label><input name="email" type="email" autocomplete="email"
-                            required></div>
-                    <div class="field"><label>Password</label><input name="password" type="password"
-                            autocomplete="new-password" minlength="6" required></div>
-                    <div class="field"><label>Confirm password</label><input name="confirm_password" type="password"
-                            autocomplete="new-password" minlength="6" required></div><button class="submit"
-                        id="signupButton">Create account</button>
-                    <p id="message" class="lede" style="margin-top:16px"></p>
-                    <div class="row-between"><span>Already have an account?</span><a href="login.html">Sign in</a></div>
+                    <div class="field">
+                        <label>Email</label><input name="email" type="email" autocomplete="email" required />
+                    </div>
+                    <div class="field">
+                        <label>Password</label>
+                        <input name="password" type="password" autocomplete="new-password"
+                            minlength="6" required />
+                            <span class="password-toggle" onclick="togglePassword()" title="Show password">👁</span>
+                    </div>
+                    <div class="field">
+                        <label>Confirm password</label><input name="confirm_password" type="password"
+                            autocomplete="new-password" minlength="6" required />
+                        <span class="password-toggle" onclick="togglePassword()" title="Show password">👁</span>
+
+                    </div>
+                    <button class="submit" id="signupButton">Create account</button>
+                    <p id="message" class="lede" style="margin-top: 16px"></p>
+                    <div class="row-between">
+                        <span>Already have an account?</span><a href="login.html">Sign in</a>
+                    </div>
                 </form>
             </div>
         </section>
     </main>
-    <script>(function () { const f = document.getElementById('signupForm'), m = document.getElementById('message'); f.onsubmit = async e => { e.preventDefault(); const b = document.getElementById('signupButton'), data = Object.fromEntries(new FormData(f)); if (data.password !== data.confirm_password) { m.textContent = 'Passwords do not match.'; return; } b.disabled = true; try { const r = await fetch('/api/payment/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }), d = await r.json(); if (!r.ok) throw new Error(d.error || 'Unable to create account.'); sessionStorage.setItem('skulwaveAccountToken', d.account_token); location.href = 'packages.html'; } catch (err) { m.textContent = err.message; b.disabled = false; } } })();</script>
+    <script src="js/login.js"></script>
+    <script>
+        (function () {
+            const f = document.getElementById("signupForm"),
+                m = document.getElementById("message");
+            f.onsubmit = async (e) => {
+                e.preventDefault();
+                const b = document.getElementById("signupButton"),
+                    data = Object.fromEntries(new FormData(f));
+                if (data.password !== data.confirm_password) {
+                    m.textContent = "Passwords do not match.";
+                    return;
+                }
+                b.disabled = true;
+                try {
+                    const r = await fetch("/api/payment/signup", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data),
+                    }),
+                        d = await r.json();
+                    if (!r.ok) throw new Error(d.error || "Unable to create account.");
+                    sessionStorage.setItem("skulwaveAccountToken", d.account_token);
+                    location.href = "packages.html";
+                } catch (err) {
+                    m.textContent = err.message;
+                    b.disabled = false;
+                }
+            };
+        })();
+    </script>
 </body>
 
 </html>
