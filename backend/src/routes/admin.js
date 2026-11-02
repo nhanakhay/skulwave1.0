@@ -1,7 +1,8 @@
 const router = require("express").Router(),
   db = require("../db/database"),
   auth = require("../middleware/adminAuth"),
-  bcrypt = require("bcryptjs");
+  bcrypt = require("bcryptjs"),
+  crypto = require("crypto");
 const users = require("../controllers/userController"),
   sessions = require("../controllers/sessionController"),
   revenue = require("../controllers/revenueController"),
@@ -80,7 +81,22 @@ router.patch("/packages/:id", mainOnly, async (req, res) => {
   );
   res.json({ message: "Package updated" });
 });
+
 router.get("/users", managerOrMain, users.list);
+router.post("/users/:id/reset-password", managerOrMain, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid user." });
+  const user = await db.getAsync("SELECT id,username,email FROM users WHERE id=?", [id]);
+  if (!user) return res.status(404).json({ error: "User not found." });
+  const temporaryPassword = `SW-${crypto.randomBytes(4).toString("hex")}`;
+  const secret = process.env.APP_ENCRYPTION_KEY || process.env.ADMIN_API_KEY || "change-this-before-production";
+  const key = crypto.createHash("sha256").update(secret).digest();
+  const iv = crypto.randomBytes(12), cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const body = Buffer.concat([cipher.update(temporaryPassword, "utf8"), cipher.final()]);
+  const encrypted = `${iv.toString("base64")}.${cipher.getAuthTag().toString("base64")}.${body.toString("base64")}`;
+  await db.runAsync("UPDATE users SET password=?,hotspot_password_hash=?,must_change_password=1,password_reset_at=CURRENT_TIMESTAMP WHERE id=?", [await bcrypt.hash(temporaryPassword, 10), encrypted, id]);
+  res.json({ user, temporary_password: temporaryPassword });
+});
 router.get("/sessions", mainOnly, sessions.list);
 router.get("/revenue", managerOrMain, revenue.list);
 router.get("/analytics", mainOnly, analytics.overview);

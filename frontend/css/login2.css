@@ -161,6 +161,22 @@ input[type=submit]:focus {
     user-select: none;
 }
 
+.login-subtitle,
+.login-note {
+    color: #333;
+    text-align: center;
+}
+
+.login-subtitle {
+    margin: -10px 0 24px;
+    font-size: 14px;
+}
+
+.login-note {
+    margin-top: 12px;
+    font-size: 14px;
+}
+
 input[type=password] {
     padding: 3px 48px 3px 40px;
 }

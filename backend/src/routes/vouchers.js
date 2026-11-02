@@ -4,7 +4,6 @@ const db = require("../db/database");
 const { addHotspotUser } = require("../mikrotik/mikrotik");
 const router = express.Router();
 
-const DEFAULT_VOUCHER_PASSWORD = "skulwave";
 
 function generateHotspotUsername(profileName = "", length = 8) {
   const prefix = profileName

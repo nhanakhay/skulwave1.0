@@ -27,7 +27,7 @@ function togglePassword() {
 async function handlePaymentAccount(event) {
   event.preventDefault();
   const form = event.currentTarget,
-    button = document.getElementById("paymentAccountButton"),
+    button = document.getElementById("signIn"),
     loading = document.getElementById("paymentAccountLoading");
   button.disabled = true;
   loading.style.display = "block";
@@ -40,7 +40,8 @@ async function handlePaymentAccount(event) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Unable to continue.");
     sessionStorage.setItem("skulwaveAccountToken", data.account_token);
-    location.href = `packages.html?dst=${encodeURIComponent(originalDestination || "")}&router-login=${encodeURIComponent(routerLoginUrl || "")}`;
+    if (data.user?.must_change_password) location.href = "reset-password.html";
+    else location.href = `packages.html?dst=${encodeURIComponent(originalDestination || "")}&router-login=${encodeURIComponent(routerLoginUrl || "")}`;
   } catch (err) {
     alert(err.message);
     button.disabled = false;

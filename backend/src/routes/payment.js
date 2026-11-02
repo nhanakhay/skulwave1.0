@@ -58,6 +58,12 @@ function decrypt(value) {
   d.setAuthTag(tag);
   return Buffer.concat([d.update(body), d.final()]).toString("utf8");
 }
+async function saveUserPassword(userId, password, mustChangePassword) {
+  await db.runAsync(
+    "UPDATE users SET password=?,hotspot_password_hash=?,must_change_password=?,password_reset_at=CURRENT_TIMESTAMP WHERE id=?",
+    [await bcrypt.hash(password, 10), encrypt(password), mustChangePassword ? 1 : 0, userId],
+  );
+}
 const isReady = () => Boolean(process.env.PAYSTACK_SECRET_KEY && baseUrl());
 async function account(req) {
   const id = readToken(
@@ -105,12 +111,20 @@ async function authenticateAccount(req, res, registerOnly = false) {
   }
   res.json({
     account_token: token(user.id),
-    user: { email: user.email || user.username, status: user.status },
+    user: { email: user.email || user.username, status: user.status, must_change_password: Boolean(user.must_change_password) },
   });
 }
 router.post("/login", (req, res) => authenticateAccount(req, res, false));
 router.post("/signup", (req, res) => authenticateAccount(req, res, true));
 router.post("/account", (req, res) => authenticateAccount(req, res, Boolean(req.body?.confirm_password)));
+router.post("/password-change", async (req, res) => {
+  const user = await account(req), password = String(req.body?.password || ""), confirm = String(req.body?.confirm_password || "");
+  if (!user) return res.status(401).json({ error: "Please sign in again." });
+  if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters." });
+  if (password !== confirm) return res.status(400).json({ error: "Passwords do not match." });
+  await saveUserPassword(user.id, password, false);
+  res.json({ message: "Password changed successfully." });
+});
 router.get("/packages", async (_q, res) =>
   res.json({
     packages: await db.allAsync(
@@ -266,27 +280,32 @@ router.post("/verify", async (req, res) => {
     res.status(409).json({ error: e.message || "Unable to confirm payment." });
   }
 });
-router.post("/webhook", (req, res) => {
+router.post("/webhook", async (req, res) => {
   const signature = req.headers["x-paystack-signature"],
     expected = process.env.PAYSTACK_SECRET_KEY
       ? crypto
           .createHmac("sha512", process.env.PAYSTACK_SECRET_KEY)
-          .update(JSON.stringify(req.body))
+          .update(req.rawBody || Buffer.from(JSON.stringify(req.body)))
           .digest("hex")
       : "";
   if (
     !signature ||
     !expected ||
+    String(signature).length !== expected.length ||
     !crypto.timingSafeEqual(
       Buffer.from(String(signature)),
       Buffer.from(expected),
     )
   )
     return res.status(401).send("Invalid signature");
-  res.sendStatus(200);
-  if (req.body?.event === "charge.success" && req.body?.data?.reference)
-    grant(req.body.data.reference).catch((e) =>
-      console.error("[paystack/webhook]", e.message),
-    );
+  if (req.body?.event !== "charge.success" || !req.body?.data?.reference)
+    return res.sendStatus(200);
+  try {
+    await grant(req.body.data.reference);
+    return res.sendStatus(200);
+  } catch (e) {
+    console.error("[paystack/webhook]", e.message);
+    return res.status(500).json({ error: "Payment fulfillment failed; retry the webhook." });
+  }
 });
 module.exports = router;

@@ -103,6 +103,7 @@
   }
 
   .field {
+    position: relative;
     margin-bottom: 18px;
   }
 
@@ -153,14 +154,18 @@
 
 .password-toggle {
     position: absolute;
-    padding:40px 50px 0 0px;
-    /* top: 50%; */
+    top: 50%;
+    right: 10px;
     transform: translateY(-50%);
     cursor: pointer;
     font-size: 21.6px;
     color: #666;
     line-height: 1;
     user-select: none;
+}
+
+.field input[type="password"] {
+    padding-right: 44px;
 }
 
   button.submit {
@@ -194,14 +199,122 @@
     outline-offset: 3px;
   }
 
-  .signup {
-    text-decoration: none;
+  button.signIn {
+    display: block;
+    width: 80%;
+    margin: 0 auto;
+    padding: 13px 20px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--brass-1), var(--brass-2));
     color: #fff8ec;
     font-size: 14px;
     font-weight: 600;
     letter-spacing: .03em;
-    
+    cursor: pointer;
+    transition: filter .2s ease, transform .2s ease;
   }
+
+  button.signIn:hover {
+    filter: brightness(1.08);
+  }
+
+  button.signIn:active {
+    transform: translateY(1px);
+  }
+
+  button.signIn:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+
+
+
+  /* ===========================
+   sigup BUTTON
+   =========================== */
+
+   #signup {
+    display: flex;
+    justify-content: space-between;
+    width: 80%;
+    right: 60%;
+    padding: 13px 20px;
+    padding-right: 50px;
+    padding-left: 105px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--brass-1), var(--brass-2));
+    color: #fff8ec;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    cursor: pointer;
+    transition: filter .2s ease, transform .2s ease;
+  }
+
+  button.signup a {
+    /* width: 80%; */
+    text-decoration: none;
+    color: #fff8ec;
+    /* left: 40%; */
+  } 
+  button.signup:hover {
+    filter: brightness(1.08);
+  }
+
+  button.signup:active {
+    transform: translateY(1px);
+  }
+
+  button.signup:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  /* Keep the account actions aligned as one centered column. */
+  button.signIn,
+  #signup {
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  button.signIn {
+    margin-bottom: 12px;
+  }
+
+  #signup {
+    display: block;
+    padding: 0;
+    background: transparent;
+  }
+
+  #signup button {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 13px 20px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--brass-1), var(--brass-2));
+    color: #fff8ec;
+    font: 600 14px 'IBM Plex Sans', sans-serif;
+    letter-spacing: .03em;
+    cursor: pointer;
+  }
+
+  #signup button:hover {
+    filter: brightness(1.08);
+  }
+
+  #signup a {
+    color: #fff8ec;
+    text-decoration: none;
+  }
+
+ 
 
   .packages-button {
     width: 100%;
@@ -481,7 +594,6 @@
   }
 
   .ghost-btn {
-    padding-top: 50px;
     padding: 11px 26px;
     border-radius: 8px;
     border: 1.5px solid var(--brass-1);
@@ -492,6 +604,8 @@
     letter-spacing: .03em;
     cursor: pointer;
     transition: background .25s ease, color .25s ease;
+    display: inline-block;
+    margin: 6px 10px 0 0;
   }
 
   .ghost-btn:hover {

@@ -48,7 +48,7 @@ class MikroTikConnectionPool {
         host: process.env.MIKROTIK_HOST,
         user: process.env.MIKROTIK_USER,
         password: process.env.MIKROTIK_PASSWORD,
-        port: 8728,
+        port: process.env.MIKROTIK_PORT,
         // timeout in milliseconds (10s)
         timeout: 10000,
       });

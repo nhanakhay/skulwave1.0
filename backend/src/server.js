@@ -16,8 +16,13 @@ const db = require("./db/database");
 const app = express()
 
 //app.use(compression());
-app.use(cors());
-app.use(express.json());
+const publicOrigin = String(process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+app.use(cors({  origin: publicOrigin || false, }));
+app.use(express.json({
+  verify: (req, _res, buffer) => {
+    if (req.originalUrl === "/api/payment/webhook") req.rawBody = Buffer.from(buffer);
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 

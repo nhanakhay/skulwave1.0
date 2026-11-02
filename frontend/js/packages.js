@@ -42,7 +42,13 @@ async function loadPackages() {
   try {
     const r = await fetch("/api/payment/packages"),
       d = await r.json();
-    list.innerHTML = `<div class="table-scroll"><table><thead><tr><th>Package</th><th>Speed</th><th>Data</th><th>Duration</th><th>Price</th><th></th></tr></thead><tbody>${d.packages.map((p) => `<tr><td>${esc(p.name)}</td><td>${esc(p.speed)}</td><td>${esc(p.data_cap)}</td><td>${p.duration_days} day${p.duration_days === 1 ? "" : "s"}</td><td>${money(p.price)}</td><td><button class="voucher-button buy" data-id="${p.id}">Pay with MoMo</button></td></tr>`).join("")}</tbody></table></div>`;
+    list.innerHTML = `<div class="table-scroll"><table><thead><tr><th>Package</th>
+    <th>Data</th><th>Duration</th><th>Price</th><th></th></tr></thead>
+    <tbody>${d.packages.map((p) => `<tr><td>${esc(p.name)}</td>
+    <td>${esc(p.data_cap)}</td><td>${p.duration_days} day${p.duration_days === 1 ? "" : "s"}</td>
+    <td>${money(p.price)}</td><td><button class="voucher-button buy" data-id="${p.id}">
+    Pay with MoMo</button>
+    </td></tr>`).join("")}</tbody></table></div>`;
     list
       .querySelectorAll(".buy")
       .forEach((b) => (b.onclick = () => selectPackage(b.dataset.id)));
