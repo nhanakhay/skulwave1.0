@@ -11,8 +11,7 @@ exports.login = async (req, res) => {
     [body.username],
   );
   if (
-    !account ||
-    !(await bcrypt.compare(body.password || "", account.password_hash))
+    !account || !(await bcrypt.compare(body.password || "", account.password_hash))
   )
     return res.status(401).json({ error: "Invalid reseller credentials" });
   if (account.status !== "ACTIVE")

@@ -16,8 +16,13 @@ const db = require("./db/database");
 const app = express()
 
 //app.use(compression());
-app.use(cors());
-app.use(express.json());
+const publicOrigin = String(process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+app.use(cors({  origin: publicOrigin || false, }));
+app.use(express.json({
+  verify: (req, _res, buffer) => {
+    if (req.originalUrl === "/api/payment/webhook") req.rawBody = Buffer.from(buffer);
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 
@@ -55,6 +60,11 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "../../frontend/login.html"));
 });
 
-app.listen(3000, "0.0.0.0", () => {
-    console.log("Skulwave backend running on port 3000")
+db.waitForReady().then(() => {
+  app.listen(3000, "0.0.0.0", () => {
+    console.log("Skulwave backend running on port 3000");
+  });
+}).catch((error) => {
+  console.error('[server] Database migration failed; server was not started:', error.message);
+  process.exitCode = 1;
 });

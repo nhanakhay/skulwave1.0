@@ -3,13 +3,14 @@ const ngn = (v) => new Intl.NumberFormat('en-GH', { style: 'currency', currency:
 
 async function loadResellers() {
   const c = document.getElementById('adminContent');
+  const isSchoolManager = localStorage.getItem('adminRole') === 'SCHOOL_MANAGER';
 
   const render = async () => {
     const selectedDate = new URLSearchParams(location.search).get('date') || new Date().toISOString().slice(0,10);
     const d = await adminApi.get(`/resellers?date=${encodeURIComponent(selectedDate)}`);
     c.innerHTML = `
       <h2>Resellers</h2>
-      <p class="lede">Create accounts and manage sales balances.</p><label>Sales date <input id="salesDate" type="date" value="${selectedDate}"></label>
+      <p class="lede">${isSchoolManager ? 'Create reseller accounts and view your school sales.' : 'Create accounts and manage sales balances.'}</p><label>Sales date <input id="salesDate" type="date" value="${selectedDate}"></label>
       <div class="panel form-card">
         <h3>Create reseller</h3>
         <form id="resellerForm" class="form-grid">
@@ -18,7 +19,7 @@ async function loadResellers() {
           <label>Username<input name="username" required></label>
           <label>Password<input name="password" type="password" minlength="6" required></label>
           <label>Confirm password<input name="confirm_password" type="password" minlength="6" required></label>
-          <label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="100" required></label>
+          ${isSchoolManager ? '' : '<label>Starting credit (GHS)<input name="credit_balance" type="number" min="0" step="0.01" value="100" required></label>'}
           <button class="primary-button">Create reseller</button>
         </form>
       </div>
@@ -27,24 +28,24 @@ async function loadResellers() {
           <thead>
             <tr>
               <th>Reseller</th>
+               <th>Details</th>
               <th>Sales</th>
               <th>Commission</th>
               <th>Credit</th>
               <th>Outstanding</th>
               <th>Status</th>
-              <th>Details</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>${d.resellers.length ? d.resellers.map((r) => `
               <tr>
                 <td><strong>${esc(r.name)}</strong><br><small>${esc(r.username)}</small></td>
+                <td><button class="primary-button view-detail" data-id="${r.id}">View</button></td>
                 <td>${ngn(r.total_sales)}</td>
                 <td>${ngn(r.commission)}</td>
                 <td>${ngn(r.credit_balance)}</td>
                 <td>${ngn(r.outstanding)}</td>
                 <td><span class="badge ${r.status === 'ACTIVE' ? 'active' : 'expired'}">${esc(r.status)}</span></td>
-                <td><button class="primary-button view-detail" data-id="${r.id}">View</button></td>
                 <td><button class="primary-button toggle" data-id="${r.id}" data-status="${r.status}">${r.status === 'ACTIVE' ? 'Suspend' : 'Activate'}</button></td>
               </tr>
             `).join('') : '<tr><td colspan="8" class="empty">No resellers yet.</td></tr>'}</tbody>

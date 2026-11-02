@@ -5,19 +5,34 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Reseller Login | SkulWave</title>
-    <link rel="stylesheet" href="../css/login.css">
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/login2.css">
 </head>
 
-<body class="admin-body">
-    <main class="content" style="max-width:480px;padding-top:12vh">
-        <div class="panel form-card">
-            <h2>Reseller login</h2>
-            <p class="lede">Sign in to sell SkulWave vouchers.</p>
-            <form id="loginForm"><label>Username<input name="username" required></label><br><label>Password<input
-                        name="password" type="password" required></label><br><button class="primary-button">Sign
-                    in</button></form>
+<body>
+    <div class="ie-fixMinHeight">
+        <div class="main">
+            <div class="wrap animated fadeIn container">
+                <h1>Reseller Login</h1>
+                <p class="login-subtitle">Sign in to sell SkulWave vouchers.</p>
+                <form id="loginForm" name="resellerLogin">
+                    <label>
+                        <img class="ico" src="../img/user.svg" alt="Username" />
+                        <input name="username" type="text" placeholder="Reseller Username" required />
+                    </label>
+                    <label>
+                        <img class="ico" src="../img/password.svg" alt="Password" />
+                        <input name="password" type="password" placeholder="Reseller Password" required />
+                    </label>
+                    <button type="submit" class="submit-btn">Continue</button>
+                </form>
+                <p class="login-note">This page is for authorized SkulWave resellers.</p>
+            </div>
         </div>
-    </main>
+    </div>
+    <footer>
+        <p class="info bt">Powered by SkulWave Technologies</p>
+    </footer>
     <script src="../js/reseller/login.js"></script>
 </body>
 

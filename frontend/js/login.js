@@ -2,14 +2,32 @@ const apiBase = `${window.location.protocol}//${window.location.host}/api/vouche
 
 // const apiBase = "/api/vouchers/redeem"
 
+    function close(){
+      addEventListener
+    }
+
 const query = new URLSearchParams(window.location.search);
 const routerLoginUrl = query.get("router-login");
 const originalDestination = query.get("dst");
 
+function togglePassword() {
+    const passwordInput = document.getElementById("si-password");
+    const toggle = document.querySelector('.password-toggle');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggle.textContent = '🙈';
+        toggle.title = 'Hide password';
+    } else {
+        passwordInput.type = 'password';
+        toggle.textContent = '👁';
+        toggle.title = 'Show password';
+    }
+}
+
 async function handlePaymentAccount(event) {
   event.preventDefault();
   const form = event.currentTarget,
-    button = document.getElementById("paymentAccountButton"),
+    button = document.getElementById("signIn"),
     loading = document.getElementById("paymentAccountLoading");
   button.disabled = true;
   loading.style.display = "block";
@@ -22,7 +40,8 @@ async function handlePaymentAccount(event) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "Unable to continue.");
     sessionStorage.setItem("skulwaveAccountToken", data.account_token);
-    location.href = `packages.html?dst=${encodeURIComponent(originalDestination || "")}&router-login=${encodeURIComponent(routerLoginUrl || "")}`;
+    if (data.user?.must_change_password) location.href = "reset-password.html";
+    else location.href = `packages.html?dst=${encodeURIComponent(originalDestination || "")}&router-login=${encodeURIComponent(routerLoginUrl || "")}`;
   } catch (err) {
     alert(err.message);
     button.disabled = false;
@@ -30,6 +49,8 @@ async function handlePaymentAccount(event) {
   }
   return false;
 }
+
+
 
 async function handleLogin(event) {
   event.preventDefault();
@@ -54,6 +75,8 @@ async function handleLogin(event) {
   loginLoading.style.display = "block";
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     const response = await fetch(apiBase, {
       method: "POST",
       headers: {
@@ -64,7 +87,9 @@ async function handleLogin(event) {
         vFullname: buyerFullName,
         buyer_full_name: buyerFullName,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     const data = await response.json().catch(() => ({}));
 
@@ -116,7 +141,9 @@ async function handleLogin(event) {
     console.error(err);
     loginBtn.disabled = false;
     loginLoading.style.display = "none";
-    alert("Server Error, contact Administrator in the IT");
+    alert(err.name === "AbortError"
+      ? "The router is busy or temporarily unreachable. Please wait a moment and try again."
+      : "The router could not complete the connection. Please wait a moment and try again.");
     return false;
   }
 }
