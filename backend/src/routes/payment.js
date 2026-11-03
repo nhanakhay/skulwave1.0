@@ -24,6 +24,14 @@ const PROFILE_MAP = {
 };
 const baseUrl = () =>
   String(process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+const emailHotspotUsername = (email, id) => {
+  const localPart = String(email || "")
+    .split("@", 1)[0]
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 24)
+    .toLowerCase();
+  return `${localPart || "user"}-${id}`;
+};
 const appSecret = () =>
   process.env.APP_ENCRYPTION_KEY ||
   process.env.ADMIN_API_KEY ||
@@ -65,6 +73,7 @@ async function saveUserPassword(userId, password, mustChangePassword) {
   );
 }
 const isReady = () => Boolean(process.env.PAYSTACK_SECRET_KEY && baseUrl());
+const voucherPassword = () => process.env.VOUCHER_SHARED_PASSWORD || "skulwave";
 async function account(req) {
   const id = readToken(
     req.headers["x-account-token"] || req.body?.account_token,
@@ -155,8 +164,8 @@ router.post("/initialize", async (req, res) => {
     callback.searchParams.set("router-login", req.body.router_login);
   if (req.body?.dst) callback.searchParams.set("dst", req.body.dst);
   await db.runAsync(
-    "INSERT INTO transactions(user_id,package_id,amount,paystack_reference,status) VALUES(?,?,?,?,?)",
-    [user.id, pkg.id, pkg.price, reference, "pending"],
+    "INSERT INTO transactions(user_id,package_id,amount,paystack_reference,status,router_login) VALUES(?,?,?,?,?,?)",
+    [user.id, pkg.id, pkg.price, reference, "pending", req.body?.router_login || ""],
   );
   try {
     const r = await axios.post(
@@ -196,11 +205,21 @@ router.post("/initialize", async (req, res) => {
 
 async function grant(reference) {
   const t = await db.getAsync(
-    "SELECT t.*,u.hotspot_username,u.hotspot_password_hash,p.duration_days,p.data_cap_bytes,p.id package_id FROM transactions t JOIN users u ON u.id=t.user_id JOIN packages p ON p.id=t.package_id WHERE t.paystack_reference=?",
+    "SELECT t.*,u.email,u.hotspot_username,u.hotspot_password_hash,p.duration_days,p.data_cap_bytes,p.id package_id FROM transactions t JOIN users u ON u.id=t.user_id JOIN packages p ON p.id=t.package_id WHERE t.paystack_reference=?",
     [reference],
   );
   if (!t) throw new Error("Transaction not found.");
-  if (t.status === "success" && t.access_granted_at) return t;
+  if (t.status === "success" && t.access_granted_at) {
+    const fallbackVoucher = !t.router_login;
+    return {
+      ...t,
+      hotspot_username: t.hotspot_username,
+      voucher_code: fallbackVoucher ? t.hotspot_username : null,
+      fallback_voucher: fallbackVoucher,
+      expires_at: t.package_expires_at,
+      _password: fallbackVoucher ? voucherPassword() : decrypt(t.hotspot_password_hash),
+    };
+  }
   const check = await axios.get(
       `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
       {
@@ -215,8 +234,9 @@ async function grant(reference) {
     Number(paid.amount) !== Math.round(Number(t.amount) * 100)
   )
     throw new Error("Payment has not been confirmed yet.");
-  const username = t.hotspot_username || `SW${t.user_id}`,
-    password = decrypt(t.hotspot_password_hash),
+  const username = t.hotspot_username || emailHotspotUsername(t.email, t.user_id),
+    fallbackVoucher = !t.router_login,
+    password = fallbackVoucher ? voucherPassword() : decrypt(t.hotspot_password_hash),
     expiresAt = new Date(
       Date.now() + Number(t.duration_days) * 86400000,
     ).toISOString();
@@ -243,6 +263,12 @@ async function grant(reference) {
       "UPDATE users SET hotspot_username=?,active_package_id=?,package_expires_at=?,status='ACTIVE' WHERE id=?",
       [username, t.package_id, expiresAt, t.user_id],
     );
+    if (fallbackVoucher) {
+      await db.runAsync(
+        "INSERT OR IGNORE INTO vouchers(hotspot_username,hotspot_password,package_id,valid_until,status,created_by) VALUES(?,?,?,?,?,?)",
+        [username, await bcrypt.hash(voucherPassword(), 8), t.package_id, expiresAt, "active", "paystack"],
+      );
+    }
     await db.runAsync(
       "UPDATE sessions SET status='expired',end_time=CURRENT_TIMESTAMP WHERE user_id=? AND status='active'",
       [t.user_id],
@@ -259,6 +285,8 @@ async function grant(reference) {
   return {
     ...t,
     hotspot_username: username,
+    voucher_code: fallbackVoucher ? username : null,
+    fallback_voucher: fallbackVoucher,
     expires_at: expiresAt,
     _password: password,
   };

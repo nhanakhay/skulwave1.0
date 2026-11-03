@@ -47,6 +47,7 @@ const migrations = [
   require('./migrations/007_track_manager_settlements'),
   require('./migrations/008_replace_research_monthly_with_3basic'),
   require('./migrations/009_force_password_change'),
+  require('./migrations/010_track_payment_access_path'),
 ];
 
 async function applyMigration(migration) {
