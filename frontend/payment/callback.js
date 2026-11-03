@@ -31,6 +31,10 @@
       form.elements.password.value = d.password;
       form.elements.dst.value = params.get("dst") || "/status.html";
       form.submit();
+    } else if (d.fallback_voucher) {
+      message.textContent = "Payment confirmed. Use the access code below on the hotspot login page.";
+      document.getElementById("voucherCode").textContent = d.voucher_code;
+      document.getElementById("voucherBox").hidden = false;
     } else
       message.textContent = `Payment confirmed. Your Wi-Fi username is ${d.username}. Return to the hotspot login page to connect.`;
   } catch (e) {
