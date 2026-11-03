@@ -3,6 +3,7 @@ const axios = require("axios");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const db = require("../db/database");
+const { generateVoucher } = require("./vouchers");
 const {
   addHotspotUser,
   removeHotspotUser,
@@ -234,9 +235,20 @@ async function grant(reference) {
     Number(paid.amount) !== Math.round(Number(t.amount) * 100)
   )
     throw new Error("Payment has not been confirmed yet.");
-  const username = t.hotspot_username || emailHotspotUsername(t.email, t.user_id),
-    fallbackVoucher = !t.router_login,
-    password = fallbackVoucher ? voucherPassword() : decrypt(t.hotspot_password_hash),
+  const fallbackVoucher = !t.router_login;
+  let username = t.hotspot_username || emailHotspotUsername(t.email, t.user_id),
+    password = decrypt(t.hotspot_password_hash),
+    generatedVoucher = null;
+  if (fallbackVoucher && !t.hotspot_username) {
+    generatedVoucher = await generateVoucher({
+      packageId: t.package_id,
+      createdBy: "paystack",
+      status: "unused",
+    });
+    username = generatedVoucher.hotspot_username;
+    password = generatedVoucher.shared_password;
+  }
+  const
     expiresAt = new Date(
       Date.now() + Number(t.duration_days) * 86400000,
     ).toISOString();
@@ -263,10 +275,10 @@ async function grant(reference) {
       "UPDATE users SET hotspot_username=?,active_package_id=?,package_expires_at=?,status='ACTIVE' WHERE id=?",
       [username, t.package_id, expiresAt, t.user_id],
     );
-    if (fallbackVoucher) {
+    if (fallbackVoucher && generatedVoucher) {
       await db.runAsync(
-        "INSERT OR IGNORE INTO vouchers(hotspot_username,hotspot_password,package_id,valid_until,status,created_by) VALUES(?,?,?,?,?,?)",
-        [username, await bcrypt.hash(voucherPassword(), 8), t.package_id, expiresAt, "active", "paystack"],
+        "UPDATE vouchers SET valid_until=?,status='active',redeemed_at=? WHERE id=?",
+        [expiresAt, new Date().toISOString(), generatedVoucher.id],
       );
     }
     await db.runAsync(
