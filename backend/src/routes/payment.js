@@ -303,6 +303,8 @@ router.post("/verify", async (req, res) => {
       username: r.hotspot_username,
       password: r._password,
       expires_at: r.expires_at,
+      voucher_code: r.voucher_code,
+      fallback_voucher: Boolean(r.fallback_voucher),
     });
   } catch (e) {
     res.status(409).json({ error: e.message || "Unable to confirm payment." });
